@@ -1,0 +1,76 @@
+# Required variables for Zipline GCP deployment
+variable "customer_name" {
+  description = "A unique name of the customer for whom the Zipline deployment is being created."
+}
+variable "project" {
+  description = "The GCP project ID where the Zipline deployment will be created."
+}
+variable "region" {
+  description = "The GCP region where the Zipline deployment will be created."
+}
+variable "bigtable_zone" {
+  description = "The GCP zone where the Bigtable instance will be created."
+}
+variable "artifact_prefix" {
+  description = "The prefix to use for storing Zipline artifacts in GCS. This should start with gs://"
+}
+variable "zipline_version" {
+  description = "The version of Zipline to deploy. This should correspond to a valid Docker image tag in the Zipline repository."
+  default = "v0.13.1"
+}
+variable "personnel_email" {
+  description = "Group email for personnel who will administer the Zipline deployment."
+}
+
+
+# Optional variables for Zipline GCP deployment
+variable "users_email" {
+  description = "Group email for users who will access the Zipline deployment."
+  default     = ""
+}
+variable "alerting_email" {
+  description = "Email address to send alerts to."
+  default     = ""
+}
+variable "hub_domain" {
+  description = "Optional custom domain for hub. If not set, cloud run's domain will be used. This must be set if your organization requires internal only ingress."
+  default     = ""
+}
+
+variable "zipline_ui_domain" {
+  description = "Optional custom domain for the Zipline UI. This must be set to add authentication to the zipline ui."
+  default     = ""
+}
+
+variable "vpc_network_name" {
+  description = "The name of the VPC network to deploy resources into. If not set, one will be created."
+  default     = ""
+}
+
+variable "vpc_network_id" {
+  description = "The id of the VPC network to deploy resources into. If not set, one will be created."
+  default     = ""
+}
+
+variable "vpc_subnet_name" {
+  description = "The name of the VPC subnet to deploy resources into. If not set, one will be created."
+  default     = ""
+}
+
+variable "allowed_ip_ranges" {
+  description = "List of CIDR IP ranges allowed to access the Zipline deployment."
+  type        = list(string)
+  default = []
+}
+
+variable "disable_iap" {
+    description = "Whether to disable Identity-Aware Proxy (IAP) for the Zipline UI."
+    type        = bool
+    default     = false
+}
+
+variable "dataproc_init_actions" {
+    description = "List of initialization actions to run on Dataproc clusters."
+    type        = list(string)
+    default     = []
+}

@@ -1,0 +1,198 @@
+#Please run with the following environment variables set:
+#
+#  GCP_PROJECT_ID
+#  GCP_REGION
+#  GCP_BIGTABLE_INSTANCE_ID
+#  ARTIFACT_PREFIX
+#  CUSTOMER_ID
+#  TABLE_PARTITIONS_DATASET
+#
+# example:
+# GCP_PROJECT_ID=canary-443022 GCP_REGION=us-central1 GCP_BIGTABLE_INSTANCE_ID=zipline-canary-instance ARTIFACT_PREFIX=gs://zipline-artifacts-dev CUSTOMER_ID=dev TABLE_PARTITIONS_DATASET=TABLE_PARTITIONS docker compose -f zipline_hub_local.yaml up --build
+#
+
+x-postgres: &postgres
+  POSTGRES_DB: execution-info # this creates the database in Postgres
+  POSTGRES_USER: locker_user
+  POSTGRES_PASSWORD: locker_pass
+  PGPASSWORD: locker_pass # adding as env var so psql can take in automatically for inserting test data
+  POSTGRES_PORT: 5436
+  POSTGRES_CONTAINER_PORT: 5432 # Port inside the container
+
+x-temporal_postgres: &temporal_postgres
+  POSTGRES_DB: temporal # this creates the database in Postgres
+  POSTGRES_USER: locker_user
+  POSTGRES_PASSWORD: locker_pass
+  POSTGRES_PORT: 5437
+  POSTGRES_CONTAINER_PORT: 5432 # Port inside the container
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: local-orchestration-postgres
+    environment:
+      <<: *postgres
+    ports:
+      - "5436:5432" # Host port is 5436
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U locker_user -d execution-info" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  postgres-temporal:
+    image: postgres:16
+    container_name: local-temporal-postgres
+    environment:
+      <<: *temporal_postgres
+    ports:
+      - "5437:5432" # Host port is 5437
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U locker_user -d temporal" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  orchestration-temporal:
+    image: temporalio/auto-setup:1.28.0
+    container_name: orchestration-temporal
+    ports:
+      - "7233:7233"
+      - "8233:8233"
+    depends_on:
+      postgres-temporal:
+        condition: service_healthy
+    volumes:
+      - ./logs:/srv/zipline/logs
+      - ~/.config/gcloud:/srv/zipline/gcloud:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "temporal --address $(hostname -i):7233 operator cluster health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    environment:
+      DB: "postgres12"
+      DB_PORT: "5432"
+      POSTGRES_USER: "locker_user"
+      POSTGRES_PWD: "locker_pass"
+      POSTGRES_SEEDS: "postgres-temporal"
+      DBNAME: "temporal"
+      LOG_LEVEL: "info"
+      # Skip dynamic config
+      SKIP_DEFAULT_NAMESPACE_CREATION: "false"
+      # We need below so that gcp libraries know where to get credentials
+      GOOGLE_APPLICATION_CREDENTIALS: "/srv/zipline/gcloud/application_default_credentials.json"
+  orchestration-temporal-ui:
+    image: temporalio/ui:2.39.0
+    container_name: orchestration-temporal-ui
+    ports:
+      - "8088:8088"
+    depends_on:
+      orchestration-temporal:
+        condition: service_healthy
+    environment:
+      TEMPORAL_ADDRESS: "orchestration-temporal:7233"
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+      TEMPORAL_NAMESPACE: "default"
+      TEMPORAL_UI_PORT: "8088"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  orchestration-hub:
+    image: ziplineai/orchestration-hub:latest
+    platform: linux/amd64
+    container_name: orchestration-hub
+    ports:
+      - "3903:3903"
+      - "5005:5005"
+    volumes:
+      - ./logs:/srv/zipline/logs
+      - ~/.config/gcloud:/srv/zipline/gcloud:ro
+    environment:
+      TABLE_PARTITIONS_DATASET: ${TABLE_PARTITIONS_DATASET}
+      ORCHESTRATION_PORT: 3903 # Port for orchestration hub
+      DB_URL: "jdbc:postgresql://postgres:5432/execution-info"
+      DB_USERNAME: locker_user
+      DB_PASSWORD: locker_pass
+      HUB_FRONTEND_URL: http://localhost:3000
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      GCP_REGION: ${GCP_REGION}
+      GCP_BIGTABLE_INSTANCE_ID: ${GCP_BIGTABLE_INSTANCE_ID}
+      # Increasing initial RPC timeout due to warming up delay
+      BIGTABLE_INITIAL_RPC_TIMEOUT_DURATION: PT0.5S
+      BIGTABLE_MAX_RPC_TIMEOUT_DURATION: PT0.5S
+      CUSTOMER_ID: ${CUSTOMER_ID}
+      ARTIFACT_PREFIX: ${ARTIFACT_PREFIX}
+      TEMPORAL_SERVICE_ADDRESS: "orchestration-temporal:7233"
+      TEMPORAL_NAMESPACE: "default"
+      # We need below so that gcp libraries know where to get credentials
+      GOOGLE_APPLICATION_CREDENTIALS: "/srv/zipline/gcloud/application_default_credentials.json"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      orchestration-temporal:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3903/debug" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+  orchestration-temporal-worker:
+    image: ziplineai/orchestration-temporal-worker:latest
+    platform: linux/amd64
+    volumes:
+      - ./logs:/srv/zipline/logs
+      - ~/.config/gcloud:/srv/zipline/gcloud:ro
+    environment:
+      TABLE_PARTITIONS_DATASET: TABLE_PARTITIONS_davidhan
+      DB_URL: "jdbc:postgresql://postgres:5432/execution-info"
+      DB_USERNAME: locker_user
+      DB_PASSWORD: locker_pass
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      GCP_REGION: ${GCP_REGION}
+      GCP_BIGTABLE_INSTANCE_ID: ${GCP_BIGTABLE_INSTANCE_ID}
+      # Increasing initial RPC timeout due to warming up delay
+      BIGTABLE_INITIAL_RPC_TIMEOUT_DURATION: PT0.5S
+      BIGTABLE_MAX_RPC_TIMEOUT_DURATION: PT0.5S
+      CUSTOMER_ID: ${CUSTOMER_ID}
+      ARTIFACT_PREFIX: ${ARTIFACT_PREFIX}
+      TEMPORAL_SERVICE_ADDRESS: "orchestration-temporal:7233"
+      TEMPORAL_NAMESPACE: "default"
+      # We need below so that gcp libraries know where to get credentials
+      GOOGLE_APPLICATION_CREDENTIALS: "/srv/zipline/gcloud/application_default_credentials.json"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      orchestration-temporal:
+        condition: service_healthy
+
+  frontend:
+    platform: linux/amd64
+    image: ziplineai/web-ui:latest
+    container_name: orchestration-frontend
+    depends_on:
+      - orchestration-hub
+    environment:
+      <<: *postgres
+      POSTGRES_USER: locker_user
+      POSTGRES_PASSWORD: locker_pass
+      POSTGRES_DB: execution-info
+      POSTGRES_PORT: 5436
+      API_BASE_URL: http://orchestration-hub:3903
+      DATABASE_URL: "postgres://locker_user:locker_pass@postgres:5432/execution-info"
+      GOOGLE_APPLICATION_CREDENTIALS: "/app/frontend/gcloud/application_default_credentials.json"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ~/.config/gcloud:/app/frontend/gcloud:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
