@@ -1,7 +1,6 @@
 # Required variables for Zipline GCP deployment
 variable "customer_name" {
   description = "A unique name of the customer for whom the Zipline deployment is being created."
-  default     = "prod"
 }
 variable "project" {
   description = "The GCP project ID where the Zipline deployment will be created."
