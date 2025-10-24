@@ -1,8 +1,8 @@
 module "orchestration" {
   source = "../orchestration-gcp"
 
-  project_id = data.google_project.zipline.project_id
-  project_number = data.google_project.zipline.number
+  project_id      = data.google_project.zipline.project_id
+  project_number  = data.google_project.zipline.number
   zipline_version = var.zipline_version
 
   name_prefix     = var.customer_name

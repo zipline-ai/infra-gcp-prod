@@ -56,24 +56,23 @@ resource "google_sql_database_instance" "orchestration_instance" {
     }
   }
   lifecycle {
-    prevent_destroy = false
+    prevent_destroy = true
   }
-  deletion_protection = false
 }
 
 resource "google_sql_database" "orchestration_database" {
   name     = "execution-info"
   instance = google_sql_database_instance.orchestration_instance.name
   lifecycle {
-    prevent_destroy = false
+    prevent_destroy = true
   }
   deletion_policy = "ABANDON"
 }
 
 resource "google_sql_user" "orchestration_user" {
-  instance = google_sql_database_instance.orchestration_instance.name
-  name     = "locker_user"
-  password = random_password.db_password.result
+  instance        = google_sql_database_instance.orchestration_instance.name
+  name            = "locker_user"
+  password        = random_password.db_password.result
   deletion_policy = "ABANDON"
 }
 

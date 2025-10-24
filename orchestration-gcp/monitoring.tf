@@ -91,7 +91,6 @@ resource "google_monitoring_notification_channel" "alert_email" {
   labels = {
     email_address = var.alerting_email
   }
-  force_delete = false
 }
 
 resource "google_monitoring_alert_policy" "orch_uptime_alert" {
