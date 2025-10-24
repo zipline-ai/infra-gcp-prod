@@ -9,7 +9,7 @@ variable "artifact_prefix" {}
 
 variable "personnel_email" {
   description = "A group email address for personnel who should administer the Zipline deployment."
-  default = ""
+  default     = ""
 }
 
 variable "users_email" {
@@ -71,7 +71,12 @@ variable "allowed_ip_ranges" {
 }
 
 variable "disable_iap" {
-    description = "Whether to disable Identity-Aware Proxy (IAP) for the Zipline UI."
-    type        = bool
-    default     = false
+  description = "Whether to disable Identity-Aware Proxy (IAP) for the Zipline UI."
+  type        = bool
+  default     = false
+}
+
+variable "bigquery_reservation_id" {
+  description = "The BigQuery reservation ID to use for the Zipline deployment. If not set, a new reservation will be created."
+  default     = ""
 }

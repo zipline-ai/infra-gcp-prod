@@ -1,25 +1,31 @@
 # Required variables for Zipline GCP deployment
 variable "customer_name" {
   description = "A unique name of the customer for whom the Zipline deployment is being created."
+  default     = "prod"
 }
 variable "project" {
   description = "The GCP project ID where the Zipline deployment will be created."
+  default     = "canary-443022"
 }
 variable "region" {
   description = "The GCP region where the Zipline deployment will be created."
+  default     = "us-central1"
 }
 variable "bigtable_zone" {
   description = "The GCP zone where the Bigtable instance will be created."
+  default     = "us-central1-f"
 }
 variable "artifact_prefix" {
   description = "The prefix to use for storing Zipline artifacts in GCS. This should start with gs://"
+  default     = "gs://zipline-artifacts-canary"
 }
 variable "zipline_version" {
   description = "The version of Zipline to deploy. This should correspond to a valid Docker image tag in the Zipline repository."
-  default = "v0.13.1"
+  default     = "v0.13.2"
 }
 variable "personnel_email" {
   description = "Group email for personnel who will administer the Zipline deployment."
+  default     = "gcp-admin@zipline.ai"
 }
 
 
@@ -34,43 +40,48 @@ variable "alerting_email" {
 }
 variable "hub_domain" {
   description = "Optional custom domain for hub. If not set, cloud run's domain will be used. This must be set if your organization requires internal only ingress."
-  default     = ""
+  default     = "prod-orch.zipline.ai"
 }
 
 variable "zipline_ui_domain" {
   description = "Optional custom domain for the Zipline UI. This must be set to add authentication to the zipline ui."
-  default     = ""
+  default     = "prod.zipline.ai"
 }
 
 variable "vpc_network_name" {
   description = "The name of the VPC network to deploy resources into. If not set, one will be created."
-  default     = ""
+  default     = "prod-zipline-vpc"
 }
 
 variable "vpc_network_id" {
-  description = "The id of the VPC network to deploy resources into. If not set, one will be created."
-  default     = ""
+  description = "The full link of the VPC network to deploy resources into. This should start with 'projects/'. If not set, one will be created."
+  default     = "projects/canary-443022/global/networks/prod-zipline-vpc"
 }
 
 variable "vpc_subnet_name" {
   description = "The name of the VPC subnet to deploy resources into. If not set, one will be created."
-  default     = ""
+  default     = "prod-zipline-subnet"
 }
 
 variable "allowed_ip_ranges" {
   description = "List of CIDR IP ranges allowed to access the Zipline deployment."
   type        = list(string)
-  default = []
+  default     = []
 }
 
 variable "disable_iap" {
-    description = "Whether to disable Identity-Aware Proxy (IAP) for the Zipline UI."
-    type        = bool
-    default     = false
+  description = "Whether to disable Identity-Aware Proxy (IAP) for the Zipline UI."
+  type        = bool
+  default     = false
 }
 
 variable "dataproc_init_actions" {
-    description = "List of initialization actions to run on Dataproc clusters."
-    type        = list(string)
-    default     = []
+  description = "List of initialization actions to run on Dataproc clusters."
+  type        = list(string)
+  default     = []
+}
+
+variable "bigquery_reservation_id" {
+  description = "BigQuery reservation ID to use for the Zipline deployment."
+  default     = "projects/canary-443022/locations/us-central1/reservations/bq-bt-uploads"
 }

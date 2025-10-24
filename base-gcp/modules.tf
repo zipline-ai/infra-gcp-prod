@@ -1,6 +1,8 @@
 module "orchestration" {
   source = "../orchestration-gcp"
 
+  project_id = data.google_project.zipline.project_id
+  project_number = data.google_project.zipline.number
   zipline_version = var.zipline_version
 
   name_prefix     = var.customer_name
@@ -21,7 +23,12 @@ module "orchestration" {
   subnet_name = var.vpc_subnet_name != "" ? var.vpc_subnet_name : google_compute_subnetwork.zipline_subnet[0].name
 
   allowed_ip_ranges = var.allowed_ip_ranges
-  disable_iap = var.disable_iap
+  disable_iap       = var.disable_iap
+
+  depends_on = [
+    google_service_networking_connection.private_vpc_connection
+  ]
+
 }
 
 output "docker_hub_remote_repository_id" {

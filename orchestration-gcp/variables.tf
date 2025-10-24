@@ -1,3 +1,7 @@
+variable "project_id" {}
+
+variable "project_number" {}
+
 variable "name_prefix" {}
 
 variable "personnel_email" {}
@@ -45,7 +49,7 @@ variable "allowed_ip_ranges" {
 }
 
 variable "disable_iap" {
-    description = "Whether to disable Identity-Aware Proxy (IAP) for the Zipline UI."
-    type        = bool
-    default     = false
+  description = "Whether to disable Identity-Aware Proxy (IAP) for the Zipline UI."
+  type        = bool
+  default     = false
 }

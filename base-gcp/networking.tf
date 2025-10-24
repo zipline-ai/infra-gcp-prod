@@ -1,6 +1,6 @@
 # Deny all other ingress traffic to Dataproc nodes
 resource "google_compute_firewall" "deny_other_ingress_to_dataproc" {
-  name          = "deny-other-ingress-to-dataproc"
+  name          = "${var.customer_name}-zipline-deny-other-ingress-to-dataproc"
   network       = "default"
   direction     = "INGRESS"
   source_ranges = ["0.0.0.0/0"]
@@ -12,7 +12,7 @@ resource "google_compute_firewall" "deny_other_ingress_to_dataproc" {
 }
 
 resource "google_compute_firewall" "allow_access_from_dataproc_instances" {
-  name          = "allow-access-from-dataproc-instances"
+  name          = "${var.customer_name}-zipline-allow-access-from-dataproc-instances"
   network       = "default"
   direction     = "INGRESS"
   source_ranges = ["10.128.0.0/9"]
@@ -31,17 +31,9 @@ resource "google_compute_firewall" "allow_access_from_dataproc_instances" {
   priority    = 998
 }
 
-# Add Service Networking API (required for private IP)
-resource "google_project_service" "service_networking" {
-  service = "servicenetworking.googleapis.com"
-
-  disable_dependent_services = false
-  disable_on_destroy         = false
-}
-
 resource "google_compute_network" "zipline_vpc" {
   count                   = var.vpc_network_name == "" ? 1 : 0
-  name                    = "${var.customer_name}-zipline-vpc"
+  name                    = "zipline-${var.customer_name}-vpc"
   auto_create_subnetworks = false
   project                 = data.google_project.zipline.project_id
 }
@@ -49,22 +41,12 @@ resource "google_compute_network" "zipline_vpc" {
 # Create subnet for Cloud Run services
 resource "google_compute_subnetwork" "zipline_subnet" {
   count         = var.vpc_network_name == "" ? 1 : 0
-  name          = "${var.customer_name}-zipline-subnet"
+  name          = "zipline-${var.customer_name}-subnet"
   ip_cidr_range = "10.0.0.0/24"
   region        = var.region
   network       = google_compute_network.zipline_vpc[0].id
   project       = data.google_project.zipline.project_id
-
-  # Add secondary IP ranges for GKE pods and services
-  secondary_ip_range {
-    range_name    = "gke-pods"
-    ip_cidr_range = "10.1.0.0/16"
-  }
-
-  secondary_ip_range {
-    range_name    = "gke-services"
-    ip_cidr_range = "10.2.0.0/16"
-  }
+  private_ip_google_access = true
 }
 
 # Create firewall rule to allow internal communication
@@ -113,18 +95,16 @@ resource "google_compute_firewall" "zipline_health_checks" {
 
 # Allocate IP range for private services access
 resource "google_compute_global_address" "private_ip_range" {
-  count         = var.vpc_network_name == "" ? 1 : 0
   name          = "${var.customer_name}-zipline-private-ip-range"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
-  network       = google_compute_network.zipline_vpc[0].id
+  network       = var.vpc_network_name == "" ? google_compute_network.zipline_vpc[0].id : var.vpc_network_name
 }
 
 # Create private connection for services
 resource "google_service_networking_connection" "private_vpc_connection" {
-  count                   = var.vpc_network_name == "" ? 1 : 0
-  network                 = google_compute_network.zipline_vpc.id
+  network                 = var.vpc_network_name == "" ? google_compute_network.zipline_vpc[0].id : var.vpc_network_id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
 

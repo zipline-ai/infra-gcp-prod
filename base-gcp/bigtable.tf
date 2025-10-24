@@ -11,6 +11,8 @@ resource "google_bigtable_instance" "zipline_bigtable_instance" {
     }
   }
   depends_on = [google_project_service.bigtable_admin]
+
+  deletion_protection = false
 }
 
 resource "google_bigtable_table" "groupby_batch" {

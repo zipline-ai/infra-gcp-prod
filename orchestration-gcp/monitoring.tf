@@ -2,7 +2,7 @@ resource "google_cloud_run_v2_service_iam_member" "uptime_access_to_orch" {
   name     = google_cloud_run_v2_service.orchestration.name
   location = var.region
   role     = "roles/run.invoker"
-  member   = "serviceAccount:service-${data.google_project.zipline.number}@gcp-sa-monitoring-notification.iam.gserviceaccount.com"
+  member   = "serviceAccount:service-${var.project_number}@gcp-sa-monitoring-notification.iam.gserviceaccount.com"
 
   depends_on = [
     google_cloud_run_v2_service.orchestration
@@ -13,7 +13,7 @@ resource "google_cloud_run_v2_service_iam_member" "uptime_access_to_ui" {
   name     = google_cloud_run_v2_service.zipline_ui.name
   location = var.region
   role     = "roles/run.invoker"
-  member   = "serviceAccount:service-${data.google_project.zipline.number}@gcp-sa-monitoring-notification.iam.gserviceaccount.com"
+  member   = "serviceAccount:service-${var.project_number}@gcp-sa-monitoring-notification.iam.gserviceaccount.com"
 
   depends_on = [
     google_cloud_run_v2_service.zipline_ui
@@ -41,7 +41,7 @@ resource "google_monitoring_uptime_check_config" "orch_uptime_check" {
   monitored_resource {
     type = "uptime_url"
     labels = {
-      project_id = data.google_project.zipline.project_id
+      project_id = var.project_id
       host       = trimprefix(google_cloud_run_v2_service.orchestration.uri, "https://")
     }
   }
@@ -72,7 +72,7 @@ resource "google_monitoring_uptime_check_config" "ui_uptime_check" {
   monitored_resource {
     type = "uptime_url"
     labels = {
-      project_id = data.google_project.zipline.project_id
+      project_id = var.project_id
       host       = trimprefix(google_cloud_run_v2_service.zipline_ui.uri, "https://")
     }
   }
@@ -84,6 +84,7 @@ resource "google_monitoring_uptime_check_config" "ui_uptime_check" {
 }
 
 resource "google_monitoring_notification_channel" "alert_email" {
+  count        = var.alerting_email != "" ? 1 : 0
   display_name = "Zipline ${title(var.name_prefix)} Alerts"
   description  = "Email notifications for uptime check failures"
   type         = "email"
@@ -104,7 +105,7 @@ resource "google_monitoring_alert_policy" "orch_uptime_alert" {
       filter = join(" AND ", [
         "resource.type=\"uptime_url\"",
         "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\"",
-        "resource.labels.project_id=\"${data.google_project.zipline.project_id}\"",
+        "resource.labels.project_id=\"${var.project_id}\"",
         "resource.labels.host=\"${trimprefix(google_cloud_run_v2_service.orchestration.uri, "https://")}\""
       ])
       duration        = "300s" # Alert after 5 minute of failure
@@ -129,7 +130,7 @@ resource "google_monitoring_alert_policy" "orch_uptime_alert" {
 
   # Send notifications to email
   notification_channels = [
-    google_monitoring_notification_channel.alert_email.name
+    var.alerting_email != "" ? google_monitoring_notification_channel.alert_email[0].name : ""
   ]
 
   # Optional: Documentation for the alert
@@ -160,7 +161,7 @@ resource "google_monitoring_alert_policy" "ui_uptime_alert" {
       filter = join(" AND ", [
         "resource.type=\"uptime_url\"",
         "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\"",
-        "resource.labels.project_id=\"${data.google_project.zipline.project_id}\"",
+        "resource.labels.project_id=\"${var.project_id}\"",
         "resource.labels.host=\"${trimprefix(google_cloud_run_v2_service.zipline_ui.uri, "https://")}\""
 
       ])
@@ -185,7 +186,7 @@ resource "google_monitoring_alert_policy" "ui_uptime_alert" {
   }
 
   notification_channels = [
-    google_monitoring_notification_channel.alert_email.name
+    var.alerting_email != "" ? google_monitoring_notification_channel.alert_email[0].name : ""
   ]
 
   documentation {
