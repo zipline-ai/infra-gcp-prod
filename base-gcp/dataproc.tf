@@ -1,6 +1,5 @@
-resource "google_service_account" "dataproc_sa" {
-  account_id   = "zipline-${lower(var.customer_name)}-dataproc-sa"
-  display_name = "Dataproc SA"
+data "google_service_account" "dataproc_sa" {
+  account_id   = "dataproc"
 }
 
 # Dataproc Roles
@@ -8,7 +7,7 @@ resource "google_service_account" "dataproc_sa" {
 resource "google_project_iam_member" "dataproc_worker" {
   project = data.google_project.zipline.project_id
   role    = "roles/dataproc.worker"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
 # BigQuery Roles
@@ -16,19 +15,19 @@ resource "google_project_iam_member" "dataproc_worker" {
 resource "google_project_iam_member" "dataproc_bigquery_admin" {
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.admin"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
 resource "google_project_iam_member" "dataproc_bigquery_connection_admin" {
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.connectionAdmin"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
 resource "google_project_iam_member" "dataproc_bigquery_data_owner" {
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.dataOwner"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
 # Bigtable Roles
@@ -36,7 +35,7 @@ resource "google_project_iam_member" "dataproc_bigquery_data_owner" {
 resource "google_project_iam_member" "dataproc_bigtable_user" {
   project = data.google_project.zipline.project_id
   role    = "roles/bigtable.user"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
 # Storage Roles
@@ -44,7 +43,7 @@ resource "google_project_iam_member" "dataproc_bigtable_user" {
 resource "google_project_iam_member" "dataproc_storage_object_admin" {
   project = data.google_project.zipline.project_id
   role    = "roles/storage.objectAdmin"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
 # PubSub Roles
@@ -52,7 +51,7 @@ resource "google_project_iam_member" "dataproc_storage_object_admin" {
 resource "google_project_iam_member" "dataproc_pubsub_editor" {
   project = data.google_project.zipline.project_id
   role    = "roles/pubsub.editor"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
 # Autoscailing Policy

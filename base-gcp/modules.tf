@@ -16,7 +16,7 @@ module "orchestration" {
   bigtable_instance_name       = google_bigtable_instance.zipline_bigtable_instance.name
   table_partitions_dataset     = google_bigtable_table.table_partitions.name
   data_quality_metrics_dataset = "DATA_QUALITY_METRICS"
-  dataproc_service_account     = google_service_account.dataproc_sa.id
+  dataproc_service_account     = data.google_service_account.dataproc_sa.id
 
   vpc_id      = var.vpc_network_id != "" ? var.vpc_network_id : google_compute_network.zipline_vpc[0].id
   vpc_name    = var.vpc_network_name != "" ? var.vpc_network_name : google_compute_network.zipline_vpc[0].name
