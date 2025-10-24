@@ -1,7 +1,7 @@
 # Deny all other ingress traffic to Dataproc nodes
 resource "google_compute_firewall" "deny_other_ingress_to_dataproc" {
   name          = "${var.customer_name}-zipline-deny-other-ingress-to-dataproc"
-  network       = "default"
+  network       = var.vpc_network_id
   direction     = "INGRESS"
   source_ranges = ["0.0.0.0/0"]
   target_tags   = ["dataproc-node"]
@@ -13,7 +13,7 @@ resource "google_compute_firewall" "deny_other_ingress_to_dataproc" {
 
 resource "google_compute_firewall" "allow_access_from_dataproc_instances" {
   name          = "${var.customer_name}-zipline-allow-access-from-dataproc-instances"
-  network       = "default"
+  network       = var.vpc_network_id
   direction     = "INGRESS"
   source_ranges = ["10.128.0.0/9"]
   allow {
