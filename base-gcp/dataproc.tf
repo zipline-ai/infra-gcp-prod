@@ -1,5 +1,5 @@
 resource "google_service_account" "dataproc_sa" {
-  account_id   = "zipline-${lower(var.customer_name)}-dataproc-sa"
+  account_id   = "dataproc"
   display_name = "Dataproc SA"
 }
 
