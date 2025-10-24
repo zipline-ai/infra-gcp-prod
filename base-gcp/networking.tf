@@ -40,12 +40,12 @@ resource "google_compute_network" "zipline_vpc" {
 
 # Create subnet for Cloud Run services
 resource "google_compute_subnetwork" "zipline_subnet" {
-  count         = var.vpc_network_name == "" ? 1 : 0
-  name          = "zipline-${var.customer_name}-subnet"
-  ip_cidr_range = "10.0.0.0/24"
-  region        = var.region
-  network       = google_compute_network.zipline_vpc[0].id
-  project       = data.google_project.zipline.project_id
+  count                    = var.vpc_network_name == "" ? 1 : 0
+  name                     = "zipline-${var.customer_name}-subnet"
+  ip_cidr_range            = "10.0.0.0/24"
+  region                   = var.region
+  network                  = google_compute_network.zipline_vpc[0].id
+  project                  = data.google_project.zipline.project_id
   private_ip_google_access = true
 }
 

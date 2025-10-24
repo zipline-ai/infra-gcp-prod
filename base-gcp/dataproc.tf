@@ -77,7 +77,8 @@ resource "google_dataproc_autoscaling_policy" "zipline_autoscaling_policy" {
   }
 }
 
-# Dataproc Cluster
+# Static Dataproc Cluster
+# uncomment to use static cluster
 
 # resource "google_dataproc_cluster" "zipline_dataproc" {
 #   name   = "zipline-${lower(var.customer_name)}-cluster"

@@ -312,7 +312,6 @@ resource "google_cloud_run_v2_service" "orchestration" {
       scaling,
     ]
   }
-  deletion_protection = false
 }
 
 resource "google_cloud_run_v2_service_iam_member" "orchestration_personnel_access" {
@@ -405,7 +404,6 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
       scaling,
     ]
   }
-  deletion_protection = false
 }
 
 resource "google_cloud_run_v2_service_iam_member" "ui_personnel_access" {
