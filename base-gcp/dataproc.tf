@@ -1,5 +1,5 @@
 data "google_service_account" "dataproc_sa" {
-  account_id   = "dataproc"
+  account_id = "dataproc"
 }
 
 # Dataproc Roles

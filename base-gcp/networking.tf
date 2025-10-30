@@ -1,7 +1,7 @@
 # Deny all other ingress traffic to Dataproc nodes
 resource "google_compute_firewall" "deny_other_ingress_to_dataproc" {
   name          = "${var.customer_name}-zipline-deny-other-ingress-to-dataproc"
-  network       = var.vpc_network_id
+  network       = var.vpc_network_id != "" ? var.vpc_network_id : google_compute_network.zipline_vpc[0].id
   direction     = "INGRESS"
   source_ranges = ["0.0.0.0/0"]
   target_tags   = ["dataproc-node"]
@@ -13,7 +13,7 @@ resource "google_compute_firewall" "deny_other_ingress_to_dataproc" {
 
 resource "google_compute_firewall" "allow_access_from_dataproc_instances" {
   name          = "${var.customer_name}-zipline-allow-access-from-dataproc-instances"
-  network       = var.vpc_network_id
+  network       = var.vpc_network_id != "" ? var.vpc_network_id : google_compute_network.zipline_vpc[0].id
   direction     = "INGRESS"
   source_ranges = ["10.128.0.0/9"]
   allow {
@@ -95,18 +95,20 @@ resource "google_compute_firewall" "zipline_health_checks" {
 
 # Allocate IP range for private services access
 resource "google_compute_global_address" "private_ip_range" {
+  count         = var.vpc_network_name == "" ? 1 : 0
   name          = "${var.customer_name}-zipline-private-ip-range"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
-  network       = var.vpc_network_name == "" ? google_compute_network.zipline_vpc[0].id : var.vpc_network_name
+  network       = google_compute_network.zipline_vpc[0].id
 }
 
 # Create private connection for services
 resource "google_service_networking_connection" "private_vpc_connection" {
-  network                 = var.vpc_network_name == "" ? google_compute_network.zipline_vpc[0].id : var.vpc_network_id
+  count                   = var.vpc_network_name == "" ? 1 : 0
+  network                 = google_compute_network.zipline_vpc[0].id
   service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
+  reserved_peering_ranges = [google_compute_global_address.private_ip_range[0].name]
 
   depends_on = [
     google_compute_global_address.private_ip_range

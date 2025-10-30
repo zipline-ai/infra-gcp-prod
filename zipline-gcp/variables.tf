@@ -81,7 +81,8 @@ variable "dataproc_init_actions" {
   default     = []
 }
 
-variable "bigquery_reservation_id" {
-  description = "BigQuery reservation ID to use for the Zipline deployment."
-  default     = "projects/canary-443022/locations/us-central1/reservations/bq-bt-uploads"
+variable "create_bigquery_reservation" {
+  description = "Whether to create a BigQuery reservation for Zipline."
+  type        = bool
+  default     = false
 }
