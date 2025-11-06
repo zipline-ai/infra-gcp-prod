@@ -62,6 +62,7 @@ echo "Beginning Upload To GCS"
 
 # Upload jars to GCS
 gcloud storage cp ./jars/$VERSION/* ${ARTIFACT_PREFIX%/}/release/$VERSION/jars/
+gcloud storage cp ./jars/$VERSION/* ${ARTIFACT_PREFIX%/}/release/latest/jars/
 
 # Upload wheel to GCS
 gcloud storage cp ./wheels/$VERSION/* ${ARTIFACT_PREFIX%/}/release/$VERSION/wheels/
