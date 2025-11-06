@@ -305,6 +305,7 @@ resource "google_cloud_run_v2_service" "orchestration" {
 
   lifecycle {
     ignore_changes = [
+      template[0].containers[0].image,
       template[0].containers[0].resources[0].cpu_idle,
       template[0].labels,
       client,
@@ -397,6 +398,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
 
   lifecycle {
     ignore_changes = [
+      template[0].containers[0].image,
       template[0].containers[0].resources[0].cpu_idle,
       template[0].labels,
       client,
