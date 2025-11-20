@@ -1,5 +1,6 @@
-data "google_service_account" "dataproc_sa" {
-  account_id = "dataproc"
+resource "google_service_account" "dataproc_sa" {
+  account_id   = "dataproc"
+  display_name = "Dataproc SA"
 }
 
 # Dataproc Roles
@@ -7,7 +8,7 @@ data "google_service_account" "dataproc_sa" {
 resource "google_project_iam_member" "dataproc_worker" {
   project = data.google_project.zipline.project_id
   role    = "roles/dataproc.worker"
-  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
 }
 
 # BigQuery Roles
@@ -15,13 +16,13 @@ resource "google_project_iam_member" "dataproc_worker" {
 resource "google_project_iam_member" "dataproc_bigquery" {
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.user"
-  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
 }
 
 resource "google_project_iam_member" "dataproc_bigquery_connection" {
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.connectionUser"
-  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
 }
 
 # Bigtable Roles
@@ -29,7 +30,7 @@ resource "google_project_iam_member" "dataproc_bigquery_connection" {
 resource "google_project_iam_member" "dataproc_bigtable_user" {
   project = data.google_project.zipline.project_id
   role    = "roles/bigtable.user"
-  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
 }
 
 # Storage Roles
@@ -51,7 +52,7 @@ resource "google_storage_bucket_iam_member" "zipline-bucket-viewer-binding" {
 resource "google_project_iam_member" "dataproc_pubsub_editor" {
   project = data.google_project.zipline.project_id
   role    = "roles/pubsub.editor"
-  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
 }
 
 # Autoscailing Policy
