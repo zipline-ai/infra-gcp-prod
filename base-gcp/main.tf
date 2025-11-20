@@ -79,7 +79,7 @@ resource "google_project_iam_member" "personnel_monitoring" {
 # Users Roles
 resource "google_service_account_iam_member" "users_dataproc_sa" {
   count              = var.users_email != "" ? 1 : 0
-  service_account_id = data.google_service_account.dataproc_sa.id
+  service_account_id = google_service_account.dataproc_sa.id
   role               = "roles/iam.serviceAccountUser"
   member             = "group:${var.users_email}"
 }

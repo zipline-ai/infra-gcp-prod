@@ -38,13 +38,13 @@ resource "google_project_iam_member" "dataproc_bigtable_user" {
 resource "google_storage_bucket_iam_member" "zipline-bucket-binding" {
   bucket = google_storage_bucket.zipline.name
   role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
+  member = "serviceAccount:${google_service_account.dataproc_sa.email}"
 }
 
 resource "google_storage_bucket_iam_member" "zipline-bucket-viewer-binding" {
   bucket = trimprefix(var.artifact_prefix, "gs://")
   role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
+  member = "serviceAccount:${google_service_account.dataproc_sa.email}"
 }
 
 # PubSub Roles
