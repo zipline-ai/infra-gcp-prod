@@ -322,6 +322,14 @@ resource "google_cloud_run_v2_service_iam_member" "orchestration_personnel_acces
   member   = "group:${var.personnel_email}"
 }
 
+resource "google_cloud_run_v2_service_iam_member" "orchestration_users_access" {
+  count    = var.users_email != "" ? 1 : 0
+  name     = google_cloud_run_v2_service.orchestration.name
+  location = google_cloud_run_v2_service.orchestration.location
+  role     = "roles/run.invoker"
+  member   = "group:${var.users_email}"
+}
+
 resource "google_cloud_run_v2_service_iam_member" "orchestration_ui_hub_access" {
   name     = google_cloud_run_v2_service.orchestration.name
   location = google_cloud_run_v2_service.orchestration.location
@@ -419,11 +427,32 @@ resource "google_cloud_run_v2_service_iam_member" "ui_personnel_access" {
   member   = "group:${var.personnel_email}"
 }
 
+resource "google_cloud_run_v2_service_iam_member" "ui_users_access" {
+  count    = var.users_email != "" ? 1 : 0
+  name     = google_cloud_run_v2_service.zipline_ui.name
+  location = google_cloud_run_v2_service.zipline_ui.location
+  role     = "roles/run.invoker"
+  member   = "group:${var.users_email}"
+}
+
 resource "google_cloud_run_v2_service_iam_member" "ui_iap_access" {
   name     = google_cloud_run_v2_service.zipline_ui.name
   location = google_cloud_run_v2_service.zipline_ui.location
   role     = "roles/run.invoker"
   member   = "serviceAccount:service-${var.project_number}@gcp-sa-iap.iam.gserviceaccount.com"
+}
+
+resource "google_iap_web_backend_service_iam_member" "ui_iap_users_access" {
+  count               = var.users_email != "" && var.zipline_ui_domain != "" ? 1 : 0
+  project             = var.project_id
+  web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
+  role                = "roles/iap.httpsResourceAccessor"
+  member              = "group:${var.users_email}"
+
+  depends_on = [
+    google_cloud_run_v2_service.zipline_ui,
+    google_cloud_run_v2_service_iam_member.ui_users_access
+  ]
 }
 
 resource "google_iap_web_backend_service_iam_member" "ui_iap_personnel_access" {

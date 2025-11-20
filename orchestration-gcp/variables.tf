@@ -6,6 +6,8 @@ variable "name_prefix" {}
 
 variable "personnel_email" {}
 
+variable "users_email" {}
+
 variable "alerting_email" {}
 
 variable "zipline_version" {}

@@ -12,21 +12,15 @@ resource "google_project_iam_member" "dataproc_worker" {
 
 # BigQuery Roles
 
-resource "google_project_iam_member" "dataproc_bigquery_admin" {
+resource "google_project_iam_member" "dataproc_bigquery" {
   project = data.google_project.zipline.project_id
-  role    = "roles/bigquery.admin"
+  role    = "roles/bigquery.user"
   member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
-resource "google_project_iam_member" "dataproc_bigquery_connection_admin" {
+resource "google_project_iam_member" "dataproc_bigquery_connection" {
   project = data.google_project.zipline.project_id
-  role    = "roles/bigquery.connectionAdmin"
-  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
-}
-
-resource "google_project_iam_member" "dataproc_bigquery_data_owner" {
-  project = data.google_project.zipline.project_id
-  role    = "roles/bigquery.dataOwner"
+  role    = "roles/bigquery.connectionUser"
   member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
@@ -43,13 +37,13 @@ resource "google_project_iam_member" "dataproc_bigtable_user" {
 resource "google_storage_bucket_iam_member" "zipline-bucket-binding" {
   bucket = google_storage_bucket.zipline.name
   role   = "roles/storage.objectAdmin"
-  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
+  member = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
 resource "google_storage_bucket_iam_member" "zipline-bucket-viewer-binding" {
   bucket = trimprefix(var.artifact_prefix, "gs://")
   role   = "roles/storage.objectViewer"
-  member  = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
+  member = "serviceAccount:${data.google_service_account.dataproc_sa.email}"
 }
 
 # PubSub Roles

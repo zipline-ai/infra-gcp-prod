@@ -8,6 +8,7 @@ module "orchestration" {
   name_prefix     = var.customer_name
   region          = var.region
   personnel_email = var.personnel_email
+  users_email     = var.users_email
   alerting_email  = var.alerting_email
 
   zipline_ui_domain = var.zipline_ui_domain
