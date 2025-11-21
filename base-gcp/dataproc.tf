@@ -25,6 +25,12 @@ resource "google_project_iam_member" "dataproc_bigquery_connection" {
   member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
 }
 
+resource "google_project_iam_member" "dataproc_bigquery_data_editor" {
+  project = data.google_project.zipline.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+}
+
 # Bigtable Roles
 
 resource "google_project_iam_member" "dataproc_bigtable_user" {
