@@ -18,7 +18,6 @@ resource "google_project_service" "monitoring" {
   disable_on_destroy         = false
 }
 
-
 # Add Service Networking API (required for private IP)
 resource "google_project_service" "service_networking" {
   service = "servicenetworking.googleapis.com"

@@ -75,7 +75,8 @@ variable "dataproc_init_actions" {
   default     = []
 }
 
-variable "bigquery_reservation_id" {
-  description = "BigQuery reservation ID to use for the Zipline deployment."
-  default     = ""
+variable "create_bigquery_reservation" {
+  description = "Whether to create a BigQuery reservation for Zipline."
+  type        = bool
+  default     = true
 }

@@ -76,7 +76,8 @@ variable "disable_iap" {
   default     = false
 }
 
-variable "bigquery_reservation_id" {
-  description = "The BigQuery reservation ID to use for the Zipline deployment. If not set, a new reservation will be created."
-  default     = ""
+variable "create_bigquery_reservation" {
+  description = "Whether to create a BigQuery reservation for Zipline."
+  type        = bool
+  default     = true
 }

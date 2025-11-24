@@ -23,6 +23,9 @@ resource "google_secret_manager_secret" "db_password" {
 resource "google_secret_manager_secret_version" "db_password" {
   secret      = google_secret_manager_secret.db_password.id
   secret_data = random_password.db_password.result
+  depends_on = [
+    google_project_service.secrets
+  ]
 }
 
 resource "random_password" "db_password" {
@@ -58,6 +61,9 @@ resource "google_sql_database_instance" "orchestration_instance" {
   lifecycle {
     prevent_destroy = true
   }
+  depends_on = [
+    google_project_service.cloud_sql
+  ]
 }
 
 resource "google_sql_database" "orchestration_database" {
