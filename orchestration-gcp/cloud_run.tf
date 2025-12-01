@@ -10,7 +10,23 @@ resource "google_artifact_registry_repository" "docker_hub_remote_repository" {
     docker_repository {
       public_repository = "DOCKER_HUB"
     }
+
+    upstream_credentials {
+      username_password_credentials {
+        username                = "${var.name_prefix}-zipline"
+        password_secret_version = google_secret_manager_secret_version.docker_token_version.name
+      }
+    }
   }
+}
+
+resource "google_secret_manager_secret" "docker_token" {
+  secret_id = "${var.name_prefix}-zipline-docker-token"
+}
+
+resource "google_secret_manager_secret_version" "docker_token_version" {
+  secret      = google_secret_manager_secret.docker_token.id
+  secret_data = var.docker_hub_token
 }
 
 # Enable required APIs
