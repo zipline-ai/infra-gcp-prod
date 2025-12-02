@@ -44,6 +44,11 @@ variable "zipline_ui_domain" {
   default     = ""
 }
 
+variable "zipline_eval_domain" {
+  description = "Set to provide a URL for the Zipline eval service."
+  default     = ""
+}
+
 variable "zipline_version" {
   description = "The version of Zipline to deploy. This should correspond to a valid Docker image tag in the Zipline repository."
   default     = "latest"

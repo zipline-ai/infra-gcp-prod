@@ -11,8 +11,9 @@ module "orchestration" {
   users_email     = var.users_email
   alerting_email  = var.alerting_email
 
-  zipline_ui_domain = var.zipline_ui_domain
-  hub_domain        = var.hub_domain
+  zipline_ui_domain   = var.zipline_ui_domain
+  hub_domain          = var.hub_domain
+  zipline_eval_domain = var.zipline_eval_domain
 
   bigtable_instance_name       = google_bigtable_instance.zipline_bigtable_instance.name
   table_partitions_dataset     = google_bigtable_table.table_partitions.name

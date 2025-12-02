@@ -11,6 +11,7 @@ module "base_setup" {
   zipline_version             = var.zipline_version
   hub_domain                  = var.hub_domain
   zipline_ui_domain           = var.zipline_ui_domain
+  zipline_eval_domain         = var.zipline_eval_domain
   vpc_network_name            = var.vpc_network_name
   vpc_network_id              = var.vpc_network_id
   vpc_subnet_name             = var.vpc_subnet_name
