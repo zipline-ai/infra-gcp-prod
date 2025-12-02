@@ -80,3 +80,9 @@ variable "create_bigquery_reservation" {
   type        = bool
   default     = true
 }
+
+variable "eval_impersonation_users" {
+  description = "List of users/groups who can impersonate the eval service account (e.g., user:alice@example.com, group:data-team@example.com)"
+  type        = list(string)
+  default     = [""]
+}

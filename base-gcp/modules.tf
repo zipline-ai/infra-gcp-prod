@@ -26,6 +26,8 @@ module "orchestration" {
   allowed_ip_ranges = var.allowed_ip_ranges
   disable_iap       = var.disable_iap
 
+  eval_impersonation_users = var.eval_impersonation_users
+
   depends_on = [
     google_service_networking_connection.private_vpc_connection
   ]
@@ -52,10 +54,29 @@ output "ui_address" {
   value = module.orchestration.ui_address
 }
 
+output "eval_service_url" {
+  value       = module.orchestration.eval_service_url
+  description = "URL of the Chronon Eval service"
+}
+
 output "UI_DNS_Instructions" {
   value = module.orchestration.UI_DNS_Instructions
 }
 
 output "Hub_DNS_Instructions" {
   value = module.orchestration.Hub_DNS_Instructions
+}
+
+output "Eval_DNS_Instructions" {
+  value = module.orchestration.Eval_DNS_Instructions
+}
+
+output "eval_service_account_email" {
+  value       = module.orchestration.eval_service_account_email
+  description = "Email of the Chronon Eval metadata service account"
+}
+
+output "eval_service_account_id" {
+  value       = module.orchestration.eval_service_account_id
+  description = "ID of the Chronon Eval metadata service account"
 }
