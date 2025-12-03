@@ -103,6 +103,82 @@ resource "google_compute_ssl_policy" "ingress_ssl_policy" {
   min_tls_version = "TLS_1_2"
 }
 
+##############################################################
+# Service Account for Eval (Metadata-only access)
+
+resource "google_service_account" "eval_service_account" {
+  account_id   = "${var.name_prefix}-zipline-eval-sa"
+  display_name = "Chronon Eval Metadata Reader"
+  description  = "Service account for Chronon eval with metadata-only access (no data access)"
+  project      = var.project_id
+}
+
+# Grant BigQuery metadata viewer role (read table schemas, partitions)
+resource "google_project_iam_member" "eval_metadata_viewer" {
+  project = var.project_id
+  role    = "roles/bigquery.metadataViewer"
+  member  = "serviceAccount:${google_service_account.eval_service_account.email}"
+}
+
+# Grant BigQuery data viewer role
+# Required since we are querying with limit 0 to transform BigQuery schemas until added to tableUtils
+resource "google_project_iam_member" "eval_data_viewer" {
+  project = var.project_id
+  role    = "roles/bigquery.dataViewer"
+  member  = "serviceAccount:${google_service_account.eval_service_account.email}"
+}
+
+# Grant BigQuery job user role (run metadata queries)
+resource "google_project_iam_member" "eval_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.eval_service_account.email}"
+}
+
+# Grant Cloud SQL client access for eval database connection
+resource "google_project_iam_member" "eval_cloudsql" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.eval_service_account.email}"
+}
+
+# Grant logging permissions
+resource "google_project_iam_member" "eval_logging_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.eval_service_account.email}"
+}
+
+# Grant monitoring permissions
+resource "google_project_iam_member" "eval_monitoring" {
+  project = var.project_id
+  role    = "roles/monitoring.metricWriter"
+  member  = "serviceAccount:${google_service_account.eval_service_account.email}"
+}
+
+# Grant secret manager access for database credentials
+resource "google_project_iam_member" "eval_secretmanager" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.eval_service_account.email}"
+}
+
+# Grant Cloud Storage viewer access for reading buckets
+resource "google_project_iam_member" "eval_storage_viewer" {
+  project = var.project_id
+  role    = "roles/storage.objectViewer"
+  member  = "serviceAccount:${google_service_account.eval_service_account.email}"
+}
+
+# Grant service account token creator to specified users/groups for impersonation
+resource "google_service_account_iam_member" "eval_impersonation" {
+  for_each = toset(var.eval_impersonation_users)
+
+  service_account_id = google_service_account.eval_service_account.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = each.value
+}
+
 ################################################################
 # Cloud Run v2 service for Orchestration Hub
 
@@ -470,6 +546,124 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
 }
 
 ################################################################
+# Cloud Run v2 service for Chronon Eval
+
+resource "google_cloud_run_v2_service" "chronon_eval" {
+  name                = "${var.name_prefix}-zipline-chronon-eval"
+  location            = var.region
+  project             = var.project_id
+  deletion_protection = false
+
+  ingress = var.zipline_eval_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+
+  template {
+    vpc_access {
+      network_interfaces {
+        network    = var.vpc_name
+        subnetwork = var.subnet_name
+      }
+      egress = "ALL_TRAFFIC"
+    }
+
+    service_account = google_service_account.eval_service_account.email
+
+    containers {
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_hub_remote_repository.repository_id}/ziplineai/eval:${var.zipline_version}"
+      name  = "chronon-eval"
+
+      ports {
+        name           = "http1"
+        container_port = 3904
+      }
+
+      env {
+        name  = "DB_URL"
+        value = "jdbc:postgresql://${google_sql_database_instance.orchestration_instance.private_ip_address}:5432/${google_sql_database.orchestration_database.name}"
+      }
+      env {
+        name  = "DB_USERNAME"
+        value = google_sql_user.orchestration_user.name
+      }
+      env {
+        name = "DB_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.db_password.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name  = "GCP_REGION"
+        value = var.region
+      }
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "GCP_BIGTABLE_INSTANCE_ID"
+        value = var.bigtable_instance_name
+      }
+      env {
+        name  = "EVAL_SERVICE_ACCOUNT_EMAIL"
+        value = google_service_account.eval_service_account.email
+      }
+
+      resources {
+        limits = {
+          cpu    = "4"
+          memory = "8Gi"
+        }
+      }
+
+      startup_probe {
+        http_get {
+          path = "/ping"
+          port = 3904
+        }
+        initial_delay_seconds = 30
+        period_seconds        = 10
+        timeout_seconds       = 5
+        failure_threshold     = 10
+      }
+    }
+
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 3
+    }
+  }
+  traffic {
+    percent = 100
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+    ]
+  }
+
+  depends_on = [
+    google_cloud_run_v2_service.orchestration,
+    google_service_account.eval_service_account,
+    google_sql_database.orchestration_database,
+    google_project_iam_member.eval_secretmanager
+  ]
+}
+
+# IAM policy to allow orchestration service account to invoke eval service
+resource "google_cloud_run_v2_service_iam_member" "eval_orchestration_access" {
+  location = google_cloud_run_v2_service.chronon_eval.location
+  project  = google_cloud_run_v2_service.chronon_eval.project
+  name     = google_cloud_run_v2_service.chronon_eval.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.orchestration_service_account.email}"
+}
+
+
+################################################################
 # Load Balancer Backend Services for Cloud Run services
 
 resource "google_compute_security_policy" "restrict_ingress_policy" {
@@ -690,6 +884,93 @@ resource "google_compute_global_forwarding_rule" "zipline_ui_forwarding_rule" {
   target                = google_compute_target_https_proxy.zipline_ui_https_proxy[0].id
 }
 
+resource "google_compute_region_network_endpoint_group" "zipline_eval_neg" {
+  count                 = var.zipline_eval_domain != "" ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-eval-neg"
+  project               = var.project_id
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+
+  cloud_run {
+    service = google_cloud_run_v2_service.chronon_eval.name
+  }
+}
+
+resource "google_compute_backend_service" "zipline_eval_backend_service" {
+  count                 = var.zipline_eval_domain != "" ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-eval-backend-service"
+  project               = var.project_id
+  protocol              = "HTTPS"
+  timeout_sec           = 30
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  backend {
+    group = google_compute_region_network_endpoint_group.zipline_eval_neg[0].id
+  }
+
+  iap {
+    enabled = true
+  }
+
+  security_policy = length(var.allowed_ip_ranges) > 0 ? google_compute_security_policy.restrict_ingress_policy[0].id : null
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+
+  depends_on = [
+    google_cloud_run_v2_service.chronon_eval,
+  ]
+}
+
+resource "google_compute_url_map" "zipline_eval_url_map" {
+  count   = var.zipline_eval_domain != "" ? 1 : 0
+  name    = "${var.name_prefix}-zipline-eval-url-map"
+  project = var.project_id
+
+  default_service = google_compute_backend_service.zipline_eval_backend_service[0].id
+}
+
+resource "google_compute_managed_ssl_certificate" "zipline_eval_ssl_cert" {
+  count   = var.zipline_eval_domain != "" ? 1 : 0
+  name    = "${var.name_prefix}-zipline-eval-ssl-cert"
+  project = var.project_id
+
+  managed {
+    domains = [var.zipline_eval_domain]
+  }
+}
+
+resource "google_compute_target_https_proxy" "zipline_eval_https_proxy" {
+  count   = var.zipline_eval_domain != "" ? 1 : 0
+  name    = "${var.name_prefix}-zipline-eval-https-proxy"
+  project = var.project_id
+
+  url_map          = google_compute_url_map.zipline_eval_url_map[0].id
+  ssl_certificates = [google_compute_managed_ssl_certificate.zipline_eval_ssl_cert[0].id]
+  ssl_policy       = google_compute_ssl_policy.ingress_ssl_policy.id
+}
+
+resource "google_compute_global_address" "zipline_eval_address" {
+  count   = var.zipline_eval_domain != "" ? 1 : 0
+  name    = "${var.name_prefix}-zipline-eval-lb-ip"
+  project = var.project_id
+}
+
+resource "google_compute_global_forwarding_rule" "zipline_eval_forwarding_rule" {
+  count       = var.zipline_eval_domain != "" ? 1 : 0
+  name        = "${var.name_prefix}-zipline-eval-forwarding-rule"
+  project     = var.project_id
+  ip_address  = google_compute_global_address.zipline_eval_address[0].address
+  ip_protocol = "TCP"
+  port_range  = "443"
+
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  target                = google_compute_target_https_proxy.zipline_eval_https_proxy[0].id
+}
+
+
 ###############################################################
 
 output "docker_hub_remote_repository_id" {
@@ -702,6 +983,11 @@ output "orchestration_service_name" {
 
 output "orchestration_service_account_id" {
   value = google_service_account.orchestration_service_account.id
+}
+
+output "eval_service_url" {
+  value       = google_cloud_run_v2_service.chronon_eval.uri
+  description = "URL of the Chronon Eval service"
 }
 
 output "hub_address" {
@@ -718,4 +1004,18 @@ output "UI_DNS_Instructions" {
 
 output "Hub_DNS_Instructions" {
   value = var.hub_domain != "" ? "Create an A record pointing ${var.hub_domain} to ${google_compute_global_address.orchestration_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
+}
+
+output "Eval_DNS_Instructions" {
+  value = var.zipline_eval_domain != "" ? "Create an A record pointing ${var.zipline_eval_domain} to ${google_compute_global_address.zipline_eval_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
+}
+
+output "eval_service_account_email" {
+  value       = google_service_account.eval_service_account.email
+  description = "Email of the Chronon Eval metadata service account"
+}
+
+output "eval_service_account_id" {
+  value       = google_service_account.eval_service_account.id
+  description = "ID of the Chronon Eval metadata service account"
 }

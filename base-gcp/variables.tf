@@ -44,6 +44,11 @@ variable "zipline_ui_domain" {
   default     = ""
 }
 
+variable "zipline_eval_domain" {
+  description = "Set to provide a URL for the Zipline eval service."
+  default     = ""
+}
+
 variable "zipline_version" {
   description = "The version of Zipline to deploy. This should correspond to a valid Docker image tag in the Zipline repository."
   default     = "latest"
@@ -80,4 +85,10 @@ variable "create_bigquery_reservation" {
   description = "Whether to create a BigQuery reservation for Zipline."
   type        = bool
   default     = true
+}
+
+variable "eval_impersonation_users" {
+  description = "List of users/groups who can impersonate the eval service account (e.g., user:alice@example.com, group:data-team@example.com)"
+  type        = list(string)
+  default     = [""]
 }
