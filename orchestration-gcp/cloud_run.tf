@@ -10,7 +10,35 @@ resource "google_artifact_registry_repository" "docker_hub_remote_repository" {
     docker_repository {
       public_repository = "DOCKER_HUB"
     }
+
+    upstream_credentials {
+      username_password_credentials {
+        username                = "ziplineai"
+        password_secret_version = google_secret_manager_secret_version.docker_token_version.name
+      }
+    }
   }
+  depends_on = [
+    google_secret_manager_secret_iam_member.artifact_registry_secret_access
+  ]
+}
+
+resource "google_secret_manager_secret" "docker_token" {
+  secret_id = "${var.name_prefix}-zipline-docker-token"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "docker_token_version" {
+  secret      = google_secret_manager_secret.docker_token.id
+  secret_data = var.docker_hub_token
+}
+
+resource "google_secret_manager_secret_iam_member" "artifact_registry_secret_access" {
+  secret_id = google_secret_manager_secret.docker_token.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:service-${var.project_number}@gcp-sa-artifactregistry.iam.gserviceaccount.com"
 }
 
 # Enable required APIs
