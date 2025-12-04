@@ -667,12 +667,6 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
   }
 
-  lifecycle {
-    ignore_changes = [
-      template[0].containers[0].image,
-    ]
-  }
-
   depends_on = [
     google_cloud_run_v2_service.orchestration,
     google_service_account.eval_service_account,
