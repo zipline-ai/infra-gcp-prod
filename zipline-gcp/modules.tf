@@ -12,6 +12,7 @@ module "base_setup" {
   zipline_version             = var.zipline_version
   hub_domain                  = var.hub_domain
   zipline_ui_domain           = var.zipline_ui_domain
+  zipline_eval_domain         = var.zipline_eval_domain
   vpc_network_name            = var.vpc_network_name
   vpc_network_id              = var.vpc_network_id
   vpc_subnet_name             = var.vpc_subnet_name
@@ -19,6 +20,7 @@ module "base_setup" {
   disable_iap                 = var.disable_iap
   dataproc_init_actions       = var.dataproc_init_actions
   create_bigquery_reservation = var.create_bigquery_reservation
+  eval_impersonation_users    = var.eval_impersonation_users
 }
 
 output "hub_address" {
@@ -29,10 +31,24 @@ output "ui_address" {
   value = module.base_setup.ui_address
 }
 
+output "eval_service_url" {
+  value       = module.base_setup.eval_service_url
+  description = "URL of the Chronon Eval service"
+}
+
 output "UI_DNS_Instructions" {
   value = module.base_setup.UI_DNS_Instructions
 }
 
 output "Hub_DNS_Instructions" {
   value = module.base_setup.Hub_DNS_Instructions
+}
+
+output "Eval_DNS_Instructions" {
+  value = module.base_setup.Eval_DNS_Instructions
+}
+
+output "eval_service_account_email" {
+  value       = module.base_setup.eval_service_account_email
+  description = "Email of the Chronon Eval metadata service account"
 }
