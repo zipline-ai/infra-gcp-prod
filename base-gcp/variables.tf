@@ -7,6 +7,10 @@ variable "customer_name" {}
 
 variable "artifact_prefix" {}
 
+variable "docker_hub_token" {
+  description = "Docker Hub token for pulling Zipline images."
+}
+
 variable "personnel_email" {
   description = "A group email address for personnel who should administer the Zipline deployment."
   default     = ""

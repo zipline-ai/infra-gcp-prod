@@ -1,9 +1,10 @@
 module "orchestration" {
   source = "../orchestration-gcp"
 
-  project_id      = data.google_project.zipline.project_id
-  project_number  = data.google_project.zipline.number
-  zipline_version = var.zipline_version
+  project_id       = data.google_project.zipline.project_id
+  project_number   = data.google_project.zipline.number
+  zipline_version  = var.zipline_version
+  docker_hub_token = var.docker_hub_token
 
   name_prefix     = var.customer_name
   region          = var.region

@@ -3,6 +3,7 @@ module "base_setup" {
 
   customer_name               = var.customer_name
   region                      = var.region
+  docker_hub_token            = var.docker_hub_token
   personnel_email             = var.personnel_email
   users_email                 = var.users_email
   alerting_email              = var.alerting_email

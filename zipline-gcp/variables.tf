@@ -14,9 +14,14 @@ variable "bigtable_zone" {
 variable "artifact_prefix" {
   description = "The prefix to use for storing Zipline artifacts in GCS. This should start with gs://"
 }
+
+variable "docker_hub_token" {
+  description = "Docker Hub token for pulling Zipline Docker images. If you have not been provided one, please reach out to the Zipline team."
+}
+
 variable "zipline_version" {
   description = "The version of Zipline to deploy. This should correspond to a valid Docker image tag in the Zipline repository."
-  default     = "v0.13.2"
+  default     = "v0.13.11"
 }
 variable "personnel_email" {
   description = "Group email for personnel who will administer the Zipline deployment."
