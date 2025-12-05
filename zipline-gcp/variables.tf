@@ -21,7 +21,7 @@ variable "docker_hub_token" {
 
 variable "zipline_version" {
   description = "The version of Zipline to deploy. This should correspond to a valid Docker image tag in the Zipline repository."
-  default     = "v0.13.9"
+  default     = "v0.13.11"
 }
 variable "personnel_email" {
   description = "Group email for personnel who will administer the Zipline deployment."
