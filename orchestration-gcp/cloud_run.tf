@@ -671,7 +671,8 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
     google_cloud_run_v2_service.orchestration,
     google_service_account.eval_service_account,
     google_sql_database.orchestration_database,
-    google_project_iam_member.eval_secretmanager
+    google_project_iam_member.eval_secretmanager,
+    google_artifact_registry_repository.docker_hub_remote_repository
   ]
 }
 
