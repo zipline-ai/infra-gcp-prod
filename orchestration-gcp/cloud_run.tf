@@ -596,7 +596,7 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
     service_account = google_service_account.eval_service_account.email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_hub_remote_repository.repository_id}/ziplineai/eval:${var.zipline_version}"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_hub_remote_repository.repository_id}/ziplineai/eval-gcp:${var.zipline_version}"
       name  = "chronon-eval"
 
       ports {
