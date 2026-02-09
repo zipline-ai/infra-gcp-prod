@@ -491,6 +491,10 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         name  = "PUBLIC_ORCH_SERVER_NAME"
         value = google_cloud_run_v2_service.orchestration.name
       }
+      env {
+        name  = "READ_ONLY"
+        value = var.read_only_ui
+      }
 
       resources {
         limits = {
