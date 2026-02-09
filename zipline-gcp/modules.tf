@@ -21,6 +21,7 @@ module "base_setup" {
   dataproc_init_actions       = var.dataproc_init_actions
   create_bigquery_reservation = var.create_bigquery_reservation
   eval_impersonation_users    = var.eval_impersonation_users
+  read_only_ui                = var.read_only_ui
 }
 
 output "hub_address" {

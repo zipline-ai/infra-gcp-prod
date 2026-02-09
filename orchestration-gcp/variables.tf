@@ -68,3 +68,8 @@ variable "eval_impersonation_users" {
   type        = list(string)
   default     = [""]
 }
+
+variable "read_only_ui" {
+  description = "Enable to mark the UI as read only, i.e. no modifications from buttons on the UI"
+  default = false
+}

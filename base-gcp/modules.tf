@@ -28,6 +28,8 @@ module "orchestration" {
   allowed_ip_ranges = var.allowed_ip_ranges
   disable_iap       = var.disable_iap
 
+  read_only_ui = var.read_only_ui
+
   eval_impersonation_users = var.eval_impersonation_users
 
   depends_on = [
