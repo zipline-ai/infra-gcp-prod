@@ -21,7 +21,7 @@ Configuration to initialize Zipline infrastructure.
     * Confirm the installation by running ```zipline```. If the command is not found, you may need to create a virtual environment and install the zipline cli there.
     * This script will be used when you want to upgrade or downgrade the cli version in the future.
 * The next step will create a directory for your zipline repo. This only needs to be done once. Use `cd` to navigate to the parent directory where you want it stored.
-* Run the following command to create the zipline repo: ```zipline init --cloud-provider gcp```
+* Run the following command to create the zipline repo: ```zipline admin init --cloud gcp```
 
 ## Initialize Infrastructure
 
@@ -48,6 +48,6 @@ Enter the zipline-gcp directory and initialize the infrastructure
 
 ### Next
 
-`zipline init` command would have created a new directory called `zipline` within your current working directory.
+`zipline admin init` command would have created a new directory called `zipline` within your current working directory.
 
 Within that is a README with further instructions for creating and running Zipline features.
