@@ -27,10 +27,25 @@ module "orchestration" {
 
   allowed_ip_ranges = var.allowed_ip_ranges
   disable_iap       = var.disable_iap
+  deploy_fetcher    = var.deploy_fetcher
 
   read_only_ui = var.read_only_ui
 
   eval_impersonation_users = var.eval_impersonation_users
+
+  zipline_auth_enabled = var.zipline_auth_enabled
+  google_oauth_client_id = var.google_oauth_client_id
+  google_oauth_client_secret = var.google_oauth_client_secret
+  github_oauth_client_id = var.github_oauth_client_id
+  github_oauth_client_secret = var.github_oauth_client_secret
+  microsoft_entra_tenant_id = var.microsoft_entra_tenant_id
+  microsoft_entra_oauth_client_id = var.microsoft_entra_oauth_client_id
+  microsoft_entra_oauth_client_secret = var.microsoft_entra_oauth_client_secret
+  sso_provider_id = var.sso_provider_id
+  sso_domain = var.sso_domain
+  sso_issuer = var.sso_issuer
+  sso_client_id = var.sso_client_id
+  sso_client_secret = var.sso_client_secret
 
   depends_on = [
     google_service_networking_connection.private_vpc_connection

@@ -218,6 +218,7 @@ resource "google_cloud_run_v2_service" "orchestration" {
     var.hub_domain != "" ? "https://${var.hub_domain}" : "https://${var.name_prefix}-zipline-orchestration-${var.project_number}.${var.region}.run.app"
   ]
   ingress = var.hub_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+  invoker_iam_disabled = var.zipline_auth_enabled
 
   template {
 
@@ -226,7 +227,7 @@ resource "google_cloud_run_v2_service" "orchestration" {
         network    = var.vpc_name
         subnetwork = var.subnet_name
       }
-      egress = "ALL_TRAFFIC"
+      egress = "PRIVATE_RANGES_ONLY"
     }
     # Main orchestration container
     containers {
@@ -309,6 +310,16 @@ resource "google_cloud_run_v2_service" "orchestration" {
         name  = "HUB_FRONTEND_URL"
         value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
       }
+      # Zipline Authentication
+      env {
+        name  = "AUTH_ENABLED"
+        value = var.zipline_auth_enabled
+      }
+      env {
+        name = "AUTH_JWKS_URL"
+        value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/jwks" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app/api/auth/jwks"
+      }
+
       ports {
         container_port = 3903
       }
@@ -499,6 +510,77 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         name  = "READ_ONLY"
         value = var.read_only_ui
       }
+      # Zipline Authentication
+      env {
+        name  = "AUTH_ENABLED"
+        value = var.zipline_auth_enabled
+      }
+      env {
+        name  = "AUTH_URL"
+        value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
+      }
+      env {
+        name = "AUTH_SECRET"
+        value_source {
+          secret_key_ref {
+            secret = google_secret_manager_secret.zipline_auth.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "GOOGLE_OAUTH_CLIENT_ID"
+        value = var.google_oauth_client_id
+      }
+      env {
+        name = "GOOGLE_OAUTH_CLIENT_SECRET"
+        value = var.google_oauth_client_secret
+      }
+
+      env {
+        name = "GITHUB_OAUTH_CLIENT_ID"
+        value = var.github_oauth_client_id
+      }
+      env {
+        name = "GITHUB_OAUTH_CLIENT_SECRET"
+        value = var.github_oauth_client_secret
+      }
+
+      env {
+        name = "MICROSOFT_ENTRA_TENANT_ID"
+        value = var.microsoft_entra_tenant_id
+      }
+      env {
+        name = "MICROSOFT_ENTRA_OAUTH_CLIENT_ID"
+        value = var.microsoft_entra_oauth_client_id
+      }
+      env {
+        name = "MICROSOFT_ENTRA_OAUTH_CLIENT_SECRET"
+        value = var.microsoft_entra_oauth_client_secret
+      }
+
+      env {
+        name = "SSO_PROVIDER_ID"
+        value = var.sso_provider_id
+      }
+      env {
+        name = "SSO_DOMAIN"
+        value = var.sso_domain
+      }
+      env {
+        name = "SSO_ISSUER"
+        value = var.sso_issuer
+      }
+      env {
+        name = "SSO_CLIENT_ID"
+        value = var.sso_client_id
+      }
+      env {
+        name = "SSO_CLIENT_SECRET"
+        value = var.sso_client_secret
+      }
+
 
       resources {
         limits = {
@@ -579,6 +661,26 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
   web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
   role                = "roles/iap.httpsResourceAccessor"
   member              = "allUsers"
+}
+
+resource "google_secret_manager_secret" "zipline_auth" {
+  secret_id = "${var.name_prefix}-zipline-auth"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "zipline_auth" {
+  secret      = google_secret_manager_secret.zipline_auth.id
+  secret_data = random_password.zipline_auth_secret.result
+  depends_on = [
+    google_project_service.secrets
+  ]
+}
+
+resource "random_password" "zipline_auth_secret" {
+  length  = 32
+  special = true
 }
 
 ################################################################
@@ -692,6 +794,221 @@ resource "google_cloud_run_v2_service_iam_member" "eval_orchestration_access" {
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.orchestration_service_account.email}"
 }
+
+resource "google_cloud_run_v2_service_iam_member" "eval_personnel_access" {
+  name     = google_cloud_run_v2_service.chronon_eval.name
+  location = google_cloud_run_v2_service.chronon_eval.location
+  role     = "roles/run.invoker"
+  member   = "group:${var.personnel_email}"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "eval_iap_access" {
+  name     = google_cloud_run_v2_service.chronon_eval.name
+  location = google_cloud_run_v2_service.chronon_eval.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:service-${var.project_number}@gcp-sa-iap.iam.gserviceaccount.com"
+}
+
+resource "google_iap_web_backend_service_iam_member" "eval_iap_personnel_access" {
+  count               = var.zipline_eval_domain != "" ? 1 : 0
+  project             = var.project_id
+  web_backend_service = google_compute_backend_service.zipline_eval_backend_service[0].name
+  role                = "roles/iap.httpsResourceAccessor"
+  member              = "group:${var.personnel_email}"
+}
+
+################################################################
+# Cloud Run v2 service for Chronon Fetcher
+
+resource "google_cloud_run_v2_service" "chronon_fetcher" {
+  count   = var.deploy_fetcher ? 1 : 0
+  name     = "${var.name_prefix}-zipline-chronon-fetcher"
+  location = var.region
+  project  = var.project_id
+
+  template {
+
+    vpc_access {
+      network_interfaces {
+        network    = var.vpc_name
+        subnetwork = var.subnet_name
+      }
+      egress = "ALL_TRAFFIC"
+    }
+
+    service_account = google_service_account.orchestration_service_account.email
+
+    containers {
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_hub_remote_repository.repository_id}/ziplineai/chronon-fetcher:${var.zipline_version}"
+      name  = "chronon-fetcher"
+
+      ports {
+        name           = "http1"
+        container_port = 9000
+      }
+
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
+      env {
+        name  = "GCP_BIGTABLE_INSTANCE_ID"
+        value = var.bigtable_instance_name
+      }
+      env {
+        name  = "CHRONON_METRICS_READER"
+        value = "http"
+      }
+      env {
+        name  = "EXPORTER_OTLP_ENDPOINT"
+        value = "http://localhost:4318"
+      }
+      env {
+        name  = "FETCHER_OOC_TOPIC_INFO"
+        value = "pubsub://${google_pubsub_topic.logging_ooc[0].name}"
+      }
+      env {
+        name  = "GCP_LOCATION"
+        value = var.region
+      }
+
+      resources {
+        limits = {
+          cpu    = "2"
+          memory = "4Gi"
+        }
+      }
+
+      startup_probe {
+        http_get {
+          path = "/ping"
+          port = 9000
+        }
+        initial_delay_seconds = 20
+        period_seconds        = 10
+        timeout_seconds       = 5
+        failure_threshold     = 10
+      }
+    }
+
+    # OTEL Collector sidecar for metrics export
+    containers {
+      image = "otel/opentelemetry-collector-contrib:0.91.0"
+      name  = "collector"
+
+      args = ["--config=env:OTEL_CONFIG_YAML"]
+
+      env {
+        name = "OTEL_CONFIG_YAML"
+        value = yamlencode({
+          receivers = {
+            otlp = {
+              protocols = {
+                grpc = {
+                  endpoint = "0.0.0.0:4317"
+                }
+                http = {
+                  endpoint = "0.0.0.0:4318"
+                }
+              }
+            }
+          }
+          processors = {
+            resourcedetection = {
+              detectors = ["env", "gcp"]
+              timeout   = "5s"
+              override  = false
+            }
+            resource = {
+              attributes = [
+                {
+                  key    = "location"
+                  value  = var.region
+                  action = "upsert"
+                },
+                {
+                  key    = "namespace"
+                  value  = var.name_prefix
+                  action = "upsert"
+                },
+                {
+                  key    = "cluster"
+                  value  = "zipline-${var.name_prefix}"
+                  action = "upsert"
+                }
+              ]
+            }
+          }
+          exporters = {
+            googlemanagedprometheus = {
+              project = var.project_id
+            }
+          }
+          service = {
+            pipelines = {
+              metrics = {
+                receivers  = ["otlp"]
+                processors = ["resourcedetection", "resource"]
+                exporters  = ["googlemanagedprometheus"]
+              }
+            }
+          }
+        })
+      }
+
+      resources {
+        limits = {
+          cpu    = "500m"
+          memory = "512Mi"
+        }
+      }
+
+    }
+
+    scaling {
+      min_instance_count = 1
+      max_instance_count = 5
+    }
+  }
+  traffic {
+    percent = 100
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+    ]
+  }
+  depends_on = [
+    google_service_account.orchestration_service_account,
+  ]
+}
+
+# IAM policy to allow orchestration service account to invoke chronon services
+resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_access" {
+  count   = var.deploy_fetcher ? 1 : 0
+  location = google_cloud_run_v2_service.chronon_fetcher[0].location
+  project  = google_cloud_run_v2_service.chronon_fetcher[0].project
+  name     = google_cloud_run_v2_service.chronon_fetcher[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.orchestration_service_account.email}"
+}
+
+# IAM policy to allow members of the peronnel group to invoke chronon services
+resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_personnel_access" {
+  count     = var.deploy_fetcher ? 1 : 0
+  location = google_cloud_run_v2_service.chronon_fetcher[0].location
+  project  = google_cloud_run_v2_service.chronon_fetcher[0].project
+  name     = google_cloud_run_v2_service.chronon_fetcher[0].name
+  role     = "roles/run.invoker"
+  member   = "group:${var.personnel_email}"
+}
+
 
 
 ################################################################

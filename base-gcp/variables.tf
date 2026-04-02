@@ -94,10 +94,102 @@ variable "create_bigquery_reservation" {
 variable "eval_impersonation_users" {
   description = "List of users/groups who can impersonate the eval service account (e.g., user:alice@example.com, group:data-team@example.com)"
   type        = list(string)
-  default     = [""]
+  default     = []
 }
 
 variable "read_only_ui" {
   description = "Enable to mark the UI as read only, i.e. no modifications from buttons on the UI"
   default = false
+}
+
+variable "setup_dataproc_cluster" {
+  description = "Whether to setup a static dataproc cluster."
+  type        = bool
+  default     = false
+}
+
+# Zipline Authentication
+variable "zipline_auth_enabled" {
+  type        = bool
+  description = "Enable Zipline authentication"
+  default     = false
+}
+
+variable "google_oauth_client_id" {
+  type        = string
+  description = "Optional for use google oauth with zipline authentication"
+  default     = ""
+}
+
+variable "google_oauth_client_secret" {
+  type        = string
+  description = "Optional for use google oauth with zipline authentication"
+  default     = ""
+}
+
+variable "github_oauth_client_id" {
+  type        = string
+  description = "Optional for use github oauth with zipline authentication"
+  default     = ""
+}
+
+variable "github_oauth_client_secret" {
+  type        = string
+  description = "Optional for use github oauth with zipline authentication"
+  default     = ""
+}
+
+variable "microsoft_entra_tenant_id" {
+  type        = string
+  description = "Optional for use Microsoft Entra id with zipline authentication"
+  default     = ""
+}
+
+variable "microsoft_entra_oauth_client_id" {
+  type        = string
+  description = "Optional for use Microsoft Entra id with zipline authentication"
+  default     = ""
+}
+
+
+variable "microsoft_entra_oauth_client_secret" {
+  type        = string
+  description = "Optional for use microsoft Entra ID with zipline authentication"
+  default     = ""
+}
+
+variable "sso_provider_id" {
+  type        = string
+  description = "Optional for use SSO with zipline authentication"
+  default     = ""
+}
+
+variable "sso_domain" {
+  type        = string
+  description = "Optional for use SSO with zipline authentication"
+  default     = ""
+}
+
+variable "sso_issuer" {
+  type        = string
+  description = "Optional for use SSO with zipline authentication"
+  default     = ""
+}
+
+variable "sso_client_id" {
+  type        = string
+  description = "Optional for use SSO with zipline authentication"
+  default     = ""
+}
+
+variable "sso_client_secret" {
+  type        = string
+  description = "Optional for use SSO with zipline authentication"
+  default     = ""
+}
+
+variable "deploy_fetcher" {
+  type        = bool
+  description = "Whether to deploy the fetcher service or not"
+  default     = false
 }

@@ -114,3 +114,19 @@ resource "google_service_networking_connection" "private_vpc_connection" {
     google_compute_global_address.private_ip_range
   ]
 }
+
+resource "google_compute_router" "router" {
+  count   = var.vpc_network_name == "" ? 1 : 0
+  name    = "${var.customer_name}-zipline-router"
+  region  = var.region
+  network = google_compute_network.zipline_vpc[0].name
+}
+
+resource "google_compute_router_nat" "nat" {
+  count                              = var.vpc_network_name == "" ? 1 : 0
+  name                               = "${var.customer_name}-zipline-nat"
+  router                             = google_compute_router.router[0].name
+  region                             = var.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+}
