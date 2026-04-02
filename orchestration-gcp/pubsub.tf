@@ -59,7 +59,7 @@ resource "google_pubsub_topic" "logging_ooc" {
 # BigQuery Dataset and Table for Logging
 
 resource "google_bigquery_dataset" "data" {
-  count   = var.deploy_fetcher ? 1 : 0
+  count       = var.deploy_fetcher ? 1 : 0
   dataset_id  = "zipline_${var.name_prefix}_data"
   description = "Dataset for storing Chronon out-of-core responses"
   location    = var.region
@@ -69,7 +69,7 @@ resource "google_bigquery_dataset" "data" {
 }
 
 resource "google_bigquery_table" "loggable_response" {
-  count   = var.deploy_fetcher ? 1 : 0
+  count      = var.deploy_fetcher ? 1 : 0
   dataset_id = google_bigquery_dataset.data[0].dataset_id
   table_id   = "loggable_response"
   project    = var.project_id

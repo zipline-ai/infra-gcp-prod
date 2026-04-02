@@ -25,19 +25,19 @@ module "base_setup" {
   setup_dataproc_cluster      = var.setup_dataproc_cluster
   deploy_fetcher              = var.deploy_fetcher
 
-  zipline_auth_enabled = var.zipline_auth_enabled
-  google_oauth_client_id = var.google_oauth_client_id
-  google_oauth_client_secret = var.google_oauth_client_secret
-  github_oauth_client_id = var.github_oauth_client_id
-  github_oauth_client_secret = var.github_oauth_client_secret
-  microsoft_entra_tenant_id = var.microsoft_entra_tenant_id
-  microsoft_entra_oauth_client_id = var.microsoft_entra_oauth_client_id
+  zipline_auth_enabled                = var.zipline_auth_enabled
+  google_oauth_client_id              = var.google_oauth_client_id
+  google_oauth_client_secret          = var.google_oauth_client_secret
+  github_oauth_client_id              = var.github_oauth_client_id
+  github_oauth_client_secret          = var.github_oauth_client_secret
+  microsoft_entra_tenant_id           = var.microsoft_entra_tenant_id
+  microsoft_entra_oauth_client_id     = var.microsoft_entra_oauth_client_id
   microsoft_entra_oauth_client_secret = var.microsoft_entra_oauth_client_secret
-  sso_provider_id = var.sso_provider_id
-  sso_domain = var.sso_domain
-  sso_issuer = var.sso_issuer
-  sso_client_id = var.sso_client_id
-  sso_client_secret = var.sso_client_secret
+  sso_provider_id                     = var.sso_provider_id
+  sso_domain                          = var.sso_domain
+  sso_issuer                          = var.sso_issuer
+  sso_client_id                       = var.sso_client_id
+  sso_client_secret                   = var.sso_client_secret
 }
 
 output "hub_address" {

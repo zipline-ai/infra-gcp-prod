@@ -217,7 +217,7 @@ resource "google_cloud_run_v2_service" "orchestration" {
   custom_audiences = [
     var.hub_domain != "" ? "https://${var.hub_domain}" : "https://${var.name_prefix}-zipline-orchestration-${var.project_number}.${var.region}.run.app"
   ]
-  ingress = var.hub_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+  ingress              = var.hub_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
   invoker_iam_disabled = var.zipline_auth_enabled
 
   template {
@@ -316,7 +316,7 @@ resource "google_cloud_run_v2_service" "orchestration" {
         value = var.zipline_auth_enabled
       }
       env {
-        name = "AUTH_JWKS_URL"
+        name  = "AUTH_JWKS_URL"
         value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/jwks" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app/api/auth/jwks"
       }
 
@@ -503,7 +503,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         value = google_cloud_run_v2_service.orchestration.name
       }
       env {
-        name = "PROMETHEUS_NAMESPACE"
+        name  = "PROMETHEUS_NAMESPACE"
         value = var.name_prefix
       }
       env {
@@ -523,61 +523,61 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         name = "AUTH_SECRET"
         value_source {
           secret_key_ref {
-            secret = google_secret_manager_secret.zipline_auth.secret_id
+            secret  = google_secret_manager_secret.zipline_auth.secret_id
             version = "latest"
           }
         }
       }
 
       env {
-        name = "GOOGLE_OAUTH_CLIENT_ID"
+        name  = "GOOGLE_OAUTH_CLIENT_ID"
         value = var.google_oauth_client_id
       }
       env {
-        name = "GOOGLE_OAUTH_CLIENT_SECRET"
+        name  = "GOOGLE_OAUTH_CLIENT_SECRET"
         value = var.google_oauth_client_secret
       }
 
       env {
-        name = "GITHUB_OAUTH_CLIENT_ID"
+        name  = "GITHUB_OAUTH_CLIENT_ID"
         value = var.github_oauth_client_id
       }
       env {
-        name = "GITHUB_OAUTH_CLIENT_SECRET"
+        name  = "GITHUB_OAUTH_CLIENT_SECRET"
         value = var.github_oauth_client_secret
       }
 
       env {
-        name = "MICROSOFT_ENTRA_TENANT_ID"
+        name  = "MICROSOFT_ENTRA_TENANT_ID"
         value = var.microsoft_entra_tenant_id
       }
       env {
-        name = "MICROSOFT_ENTRA_OAUTH_CLIENT_ID"
+        name  = "MICROSOFT_ENTRA_OAUTH_CLIENT_ID"
         value = var.microsoft_entra_oauth_client_id
       }
       env {
-        name = "MICROSOFT_ENTRA_OAUTH_CLIENT_SECRET"
+        name  = "MICROSOFT_ENTRA_OAUTH_CLIENT_SECRET"
         value = var.microsoft_entra_oauth_client_secret
       }
 
       env {
-        name = "SSO_PROVIDER_ID"
+        name  = "SSO_PROVIDER_ID"
         value = var.sso_provider_id
       }
       env {
-        name = "SSO_DOMAIN"
+        name  = "SSO_DOMAIN"
         value = var.sso_domain
       }
       env {
-        name = "SSO_ISSUER"
+        name  = "SSO_ISSUER"
         value = var.sso_issuer
       }
       env {
-        name = "SSO_CLIENT_ID"
+        name  = "SSO_CLIENT_ID"
         value = var.sso_client_id
       }
       env {
-        name = "SSO_CLIENT_SECRET"
+        name  = "SSO_CLIENT_SECRET"
         value = var.sso_client_secret
       }
 
@@ -821,7 +821,7 @@ resource "google_iap_web_backend_service_iam_member" "eval_iap_personnel_access"
 # Cloud Run v2 service for Chronon Fetcher
 
 resource "google_cloud_run_v2_service" "chronon_fetcher" {
-  count   = var.deploy_fetcher ? 1 : 0
+  count    = var.deploy_fetcher ? 1 : 0
   name     = "${var.name_prefix}-zipline-chronon-fetcher"
   location = var.region
   project  = var.project_id
@@ -991,7 +991,7 @@ resource "google_cloud_run_v2_service" "chronon_fetcher" {
 
 # IAM policy to allow orchestration service account to invoke chronon services
 resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_access" {
-  count   = var.deploy_fetcher ? 1 : 0
+  count    = var.deploy_fetcher ? 1 : 0
   location = google_cloud_run_v2_service.chronon_fetcher[0].location
   project  = google_cloud_run_v2_service.chronon_fetcher[0].project
   name     = google_cloud_run_v2_service.chronon_fetcher[0].name
@@ -1001,7 +1001,7 @@ resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_access" {
 
 # IAM policy to allow members of the peronnel group to invoke chronon services
 resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_personnel_access" {
-  count     = var.deploy_fetcher ? 1 : 0
+  count    = var.deploy_fetcher ? 1 : 0
   location = google_cloud_run_v2_service.chronon_fetcher[0].location
   project  = google_cloud_run_v2_service.chronon_fetcher[0].project
   name     = google_cloud_run_v2_service.chronon_fetcher[0].name
