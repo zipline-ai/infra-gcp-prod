@@ -6,6 +6,7 @@ rm canary_divergences.tf
 rm ci_divergences.tf
 rm .terraform.lock.hcl
 rm terraform.tfvars
+rm -rf .terraform
 
 gcloud storage cp gs://zipline-canary-vars/terraform.tfvars .
 gcloud storage cp gs://zipline-canary-vars/canary_backend.tf .
