@@ -535,7 +535,12 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
       }
       env {
         name  = "GOOGLE_OAUTH_CLIENT_SECRET"
-        value = var.google_oauth_client_secret
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.google_oauth_client_secret.secret_id
+            version = "latest"
+          }
+        }
       }
 
       env {
@@ -544,7 +549,12 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
       }
       env {
         name  = "GITHUB_OAUTH_CLIENT_SECRET"
-        value = var.github_oauth_client_secret
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.github_oauth_client_secret.secret_id
+            version = "latest"
+          }
+        }
       }
 
       env {
@@ -557,7 +567,12 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
       }
       env {
         name  = "MICROSOFT_ENTRA_OAUTH_CLIENT_SECRET"
-        value = var.microsoft_entra_oauth_client_secret
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.microsoft_entra_oauth_client_secret.secret_id
+            version = "latest"
+          }
+        }
       }
 
       env {
@@ -578,7 +593,12 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
       }
       env {
         name  = "SSO_CLIENT_SECRET"
-        value = var.sso_client_secret
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.sso_client_secret.secret_id
+            version = "latest"
+          }
+        }
       }
 
 
@@ -663,6 +683,8 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
   member              = "allUsers"
 }
 
+## Auth Secrets
+
 resource "google_secret_manager_secret" "zipline_auth" {
   secret_id = "${var.name_prefix}-zipline-auth"
   replication {
@@ -681,6 +703,75 @@ resource "google_secret_manager_secret_version" "zipline_auth" {
 resource "random_password" "zipline_auth_secret" {
   length  = 32
   special = true
+}
+
+resource "google_secret_manager_secret" "google_oauth_client_secret" {
+  count     = var.zipline_auth_enabled ? 1 : 0
+  secret_id = "zipline-google-oauth"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "google_oauth_client_secret" {
+  count       = var.zipline_auth_enabled ? 1 : 0
+  secret      = google_secret_manager_secret.google_oauth_client_secret[0].id
+  secret_data = var.google_oauth_client_secret
+  depends_on  = [
+    google_project_service.secrets
+  ]
+}
+
+
+resource "google_secret_manager_secret" "github_oauth_client_secret" {
+  count     = var.zipline_auth_enabled ? 1 : 0
+  secret_id = "zipline-github-oauth"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "github_oauth_client_secret" {
+  count      = var.zipline_auth_enabled ? 1 : 0
+  secret      = google_secret_manager_secret.github_oauth_client_secret[0].id
+  secret_data = var.github_oauth_client_secret
+  depends_on = [
+    google_project_service.secrets
+  ]
+}
+
+resource "google_secret_manager_secret" "microsoft_entra_oauth_client_secret" {
+  count     = var.zipline_auth_enabled ? 1 : 0
+  secret_id = "zipline-microsoft-entra-oauth"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "microsoft_entra_oauth_client_secret" {
+  count      = var.zipline_auth_enabled ? 1 : 0
+  secret      = google_secret_manager_secret.microsoft_entra_oauth_client_secret[0].id
+  secret_data = var.microsoft_entra_oauth_client_secret
+  depends_on = [
+    google_project_service.secrets
+  ]
+}
+
+resource "google_secret_manager_secret" "sso_client_secret" {
+  count     = var.zipline_auth_enabled ? 1 : 0
+  secret_id = "zipline-sso-client"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "sso_client_secret" {
+  count      = var.zipline_auth_enabled ? 1 : 0
+  secret      = google_secret_manager_secret.sso_client_secret
+  secret_data = var.sso_client_secret
+  depends_on = [
+    google_project_service.secrets
+    ]
 }
 
 ################################################################
