@@ -5,6 +5,12 @@ resource "google_service_account" "dataproc_sa" {
   display_name = "Dataproc SA"
 }
 
+data "google_service_account" "dataproc_sa" {
+  count      = var.create_dataproc_sa ? 0 : 1
+  project    = data.google_project.zipline.project_id
+  account_id = "dataproc"
+}
+
 # Dataproc Roles
 
 resource "google_project_iam_member" "dataproc_worker" {
