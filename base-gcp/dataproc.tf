@@ -80,7 +80,7 @@ resource "google_project_iam_member" "dataproc_pubsub_editor" {
 # Autoscailing Policy
 
 resource "google_dataproc_autoscaling_policy" "zipline_autoscaling_policy" {
-  count  = var.setup_dataproc_cluster ? 1 : 0
+  count     = var.setup_dataproc_cluster ? 1 : 0
   project   = data.google_project.zipline.project_id
   location  = var.region
   policy_id = "zipline-${lower(var.customer_name)}-autoscaling-policy"

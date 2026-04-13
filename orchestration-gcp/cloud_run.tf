@@ -765,7 +765,7 @@ resource "google_secret_manager_secret_version" "google_oauth_client_secret" {
   count       = var.zipline_auth_enabled ? 1 : 0
   secret      = google_secret_manager_secret.google_oauth_client_secret[0].id
   secret_data = var.google_oauth_client_secret
-  depends_on  = [
+  depends_on = [
     google_project_service.secrets
   ]
 }
@@ -780,7 +780,7 @@ resource "google_secret_manager_secret" "github_oauth_client_secret" {
 }
 
 resource "google_secret_manager_secret_version" "github_oauth_client_secret" {
-  count      = var.zipline_auth_enabled ? 1 : 0
+  count       = var.zipline_auth_enabled ? 1 : 0
   secret      = google_secret_manager_secret.github_oauth_client_secret[0].id
   secret_data = var.github_oauth_client_secret
   depends_on = [
@@ -797,7 +797,7 @@ resource "google_secret_manager_secret" "microsoft_entra_oauth_client_secret" {
 }
 
 resource "google_secret_manager_secret_version" "microsoft_entra_oauth_client_secret" {
-  count      = var.zipline_auth_enabled ? 1 : 0
+  count       = var.zipline_auth_enabled ? 1 : 0
   secret      = google_secret_manager_secret.microsoft_entra_oauth_client_secret[0].id
   secret_data = var.microsoft_entra_oauth_client_secret
   depends_on = [
@@ -814,12 +814,12 @@ resource "google_secret_manager_secret" "sso_client_secret" {
 }
 
 resource "google_secret_manager_secret_version" "sso_client_secret" {
-  count      = var.zipline_auth_enabled ? 1 : 0
+  count       = var.zipline_auth_enabled ? 1 : 0
   secret      = google_secret_manager_secret.sso_client_secret[0].id
   secret_data = var.sso_client_secret
   depends_on = [
     google_project_service.secrets
-    ]
+  ]
 }
 
 ################################################################
