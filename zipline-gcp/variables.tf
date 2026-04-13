@@ -108,6 +108,12 @@ variable "setup_dataproc_cluster" {
   default     = false
 }
 
+variable "create_dataproc_sa" {
+  description = "Whether to create or import the dataproc service account"
+  type        = bool
+  default     = false
+}
+
 # Zipline Authentication
 variable "zipline_auth_enabled" {
   type        = bool

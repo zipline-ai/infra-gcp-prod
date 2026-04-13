@@ -1090,7 +1090,7 @@ resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_access" {
   member   = "serviceAccount:${google_service_account.orchestration_service_account.email}"
 }
 
-# IAM policy to allow members of the peronnel group to invoke chronon services
+# IAM policy to allow members of the personnel group to invoke chronon services
 resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_personnel_access" {
   count    = var.deploy_fetcher ? 1 : 0
   location = google_cloud_run_v2_service.chronon_fetcher[0].location

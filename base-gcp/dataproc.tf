@@ -1,4 +1,6 @@
 resource "google_service_account" "dataproc_sa" {
+  count        = var.create_dataproc_sa ? 1 : 0
+  project      = data.google_project.zipline.project_id
   account_id   = "dataproc"
   display_name = "Dataproc SA"
 }
@@ -6,64 +8,73 @@ resource "google_service_account" "dataproc_sa" {
 # Dataproc Roles
 
 resource "google_project_iam_member" "dataproc_worker" {
+  count   = var.create_dataproc_sa ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/dataproc.worker"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
 }
 
 # BigQuery Roles
 
 resource "google_project_iam_member" "dataproc_bigquery" {
+  count   = var.create_dataproc_sa ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.user"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
 }
 
 resource "google_project_iam_member" "dataproc_bigquery_connection" {
+  count   = var.create_dataproc_sa ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.connectionUser"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
 }
 
 resource "google_project_iam_member" "dataproc_bigquery_data_editor" {
+  count   = var.create_dataproc_sa ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.dataEditor"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
 }
 
 # Bigtable Roles
 
 resource "google_project_iam_member" "dataproc_bigtable_user" {
+  count   = var.create_dataproc_sa ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/bigtable.user"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
 }
 
 # Storage Roles
 
 resource "google_storage_bucket_iam_member" "dataproc-bucket-binding" {
+  count  = var.create_dataproc_sa ? 1 : 0
   bucket = google_storage_bucket.zipline.name
   role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
 }
 
 resource "google_storage_bucket_iam_member" "dataproc-bucket-viewer-binding" {
+  count  = var.create_dataproc_sa ? 1 : 0
   bucket = trimprefix(var.artifact_prefix, "gs://")
   role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
 }
 
 # PubSub Roles
 
 resource "google_project_iam_member" "dataproc_pubsub_editor" {
+  count   = var.create_dataproc_sa ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/pubsub.editor"
-  member  = "serviceAccount:${google_service_account.dataproc_sa.email}"
+  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
 }
 
 # Autoscailing Policy
 
 resource "google_dataproc_autoscaling_policy" "zipline_autoscaling_policy" {
+  count  = var.setup_dataproc_cluster ? 1 : 0
   project   = data.google_project.zipline.project_id
   location  = var.region
   policy_id = "zipline-${lower(var.customer_name)}-autoscaling-policy"
@@ -124,7 +135,7 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
     }
 
     gce_cluster_config {
-      service_account = google_service_account.dataproc_sa.email
+      service_account = google_service_account.dataproc_sa[0].email
       service_account_scopes = [
         "cloud-platform",
         "monitoring",
@@ -159,7 +170,7 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
       enable_http_port_access = true
     }
     autoscaling_config {
-      policy_uri = google_dataproc_autoscaling_policy.zipline_autoscaling_policy.name
+      policy_uri = google_dataproc_autoscaling_policy.zipline_autoscaling_policy[0].name
     }
   }
   depends_on = [

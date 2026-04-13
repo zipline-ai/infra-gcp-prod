@@ -1,11 +1,12 @@
 #!/bin/bash
+set -e
 
-rm canary_backend.tf
-rm ci_backend.tf
-rm canary_divergences.tf
-rm ci_divergences.tf
-rm .terraform.lock.hcl
-rm terraform.tfvars
+rm -f canary_backend.tf
+rm -f ci_backend.tf
+rm -f canary_divergences.tf
+rm -f ci_divergences.tf
+rm -f .terraform.lock.hcl
+rm -f terraform.tfvars
 rm -rf .terraform
 
 gcloud storage cp gs://zipline-ci-vars/terraform.tfvars .

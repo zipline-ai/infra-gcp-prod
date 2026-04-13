@@ -55,6 +55,14 @@ resource "google_pubsub_topic" "logging_ooc" {
   }
 }
 
+resource "google_pubsub_topic_iam_member" "fetcher_publisher" {
+  count   = var.deploy_fetcher ? 1 : 0
+  topic   = google_pubsub_topic.logging_ooc[0].name
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_service_account.orchestration_service_account.email}"
+}
+
 ################################################################
 # BigQuery Dataset and Table for Logging
 
