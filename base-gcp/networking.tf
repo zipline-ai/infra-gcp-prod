@@ -118,6 +118,7 @@ resource "google_service_networking_connection" "private_vpc_connection" {
 resource "google_compute_router" "router" {
   count   = var.vpc_network_name == "" ? 1 : 0
   name    = "${var.customer_name}-zipline-router"
+  project = data.google_project.zipline.project_id
   region  = var.region
   network = google_compute_network.zipline_vpc[0].name
 }
@@ -127,6 +128,7 @@ resource "google_compute_router_nat" "nat" {
   name                               = "${var.customer_name}-zipline-nat"
   router                             = google_compute_router.router[0].name
   region                             = var.region
+  project                            = data.google_project.zipline.project_id
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 }
