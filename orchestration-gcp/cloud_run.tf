@@ -315,9 +315,12 @@ resource "google_cloud_run_v2_service" "orchestration" {
         name  = "AUTH_ENABLED"
         value = var.zipline_auth_enabled
       }
-      env {
-        name  = "AUTH_JWKS_URL"
-        value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/jwks" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app/api/auth/jwks"
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "AUTH_JWKS_URL"
+          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/jwks" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app/api/auth/jwks"
+        }
       }
 
       ports {
@@ -515,88 +518,130 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         name  = "AUTH_ENABLED"
         value = var.zipline_auth_enabled
       }
-      env {
-        name  = "AUTH_URL"
-        value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "AUTH_URL"
+          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
+        }
       }
-      env {
-        name = "AUTH_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.zipline_auth.secret_id
-            version = "latest"
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name = "AUTH_SECRET"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.zipline_auth[0].secret_id
+              version = "latest"
+            }
           }
         }
       }
 
-      env {
-        name  = "GOOGLE_OAUTH_CLIENT_ID"
-        value = var.google_oauth_client_id
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "GOOGLE_OAUTH_CLIENT_ID"
+          value = var.google_oauth_client_id
+        }
       }
-      env {
-        name  = "GOOGLE_OAUTH_CLIENT_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.google_oauth_client_secret.secret_id
-            version = "latest"
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name = "GOOGLE_OAUTH_CLIENT_SECRET"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.google_oauth_client_secret[0].secret_id
+              version = "latest"
+            }
           }
         }
       }
 
-      env {
-        name  = "GITHUB_OAUTH_CLIENT_ID"
-        value = var.github_oauth_client_id
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "GITHUB_OAUTH_CLIENT_ID"
+          value = var.github_oauth_client_id
+        }
       }
-      env {
-        name  = "GITHUB_OAUTH_CLIENT_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.github_oauth_client_secret.secret_id
-            version = "latest"
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name = "GITHUB_OAUTH_CLIENT_SECRET"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.github_oauth_client_secret[0].secret_id
+              version = "latest"
+            }
           }
         }
       }
 
-      env {
-        name  = "MICROSOFT_ENTRA_TENANT_ID"
-        value = var.microsoft_entra_tenant_id
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "MICROSOFT_ENTRA_TENANT_ID"
+          value = var.microsoft_entra_tenant_id
+        }
       }
-      env {
-        name  = "MICROSOFT_ENTRA_OAUTH_CLIENT_ID"
-        value = var.microsoft_entra_oauth_client_id
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "MICROSOFT_ENTRA_OAUTH_CLIENT_ID"
+          value = var.microsoft_entra_oauth_client_id
+        }
       }
-      env {
-        name  = "MICROSOFT_ENTRA_OAUTH_CLIENT_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.microsoft_entra_oauth_client_secret.secret_id
-            version = "latest"
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name = "MICROSOFT_ENTRA_OAUTH_CLIENT_SECRET"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.microsoft_entra_oauth_client_secret[0].secret_id
+              version = "latest"
+            }
           }
         }
       }
 
-      env {
-        name  = "SSO_PROVIDER_ID"
-        value = var.sso_provider_id
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "SSO_PROVIDER_ID"
+          value = var.sso_provider_id
+        }
       }
-      env {
-        name  = "SSO_DOMAIN"
-        value = var.sso_domain
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "SSO_DOMAIN"
+          value = var.sso_domain
+        }
       }
-      env {
-        name  = "SSO_ISSUER"
-        value = var.sso_issuer
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "SSO_ISSUER"
+          value = var.sso_issuer
+        }
       }
-      env {
-        name  = "SSO_CLIENT_ID"
-        value = var.sso_client_id
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "SSO_CLIENT_ID"
+          value = var.sso_client_id
+        }
       }
-      env {
-        name  = "SSO_CLIENT_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.sso_client_secret.secret_id
-            version = "latest"
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name = "SSO_CLIENT_SECRET"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.sso_client_secret[0].secret_id
+              version = "latest"
+            }
           }
         }
       }
@@ -686,6 +731,7 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
 ## Auth Secrets
 
 resource "google_secret_manager_secret" "zipline_auth" {
+  count     = var.zipline_auth_enabled ? 1 : 0
   secret_id = "${var.name_prefix}-zipline-auth"
   replication {
     auto {}
@@ -693,14 +739,16 @@ resource "google_secret_manager_secret" "zipline_auth" {
 }
 
 resource "google_secret_manager_secret_version" "zipline_auth" {
-  secret      = google_secret_manager_secret.zipline_auth.id
-  secret_data = random_password.zipline_auth_secret.result
+  count       = var.zipline_auth_enabled ? 1 : 0
+  secret      = google_secret_manager_secret.zipline_auth[0].id
+  secret_data = random_password.zipline_auth_secret[0].result
   depends_on = [
     google_project_service.secrets
   ]
 }
 
 resource "random_password" "zipline_auth_secret" {
+  count   = var.zipline_auth_enabled ? 1 : 0
   length  = 32
   special = true
 }
@@ -767,7 +815,7 @@ resource "google_secret_manager_secret" "sso_client_secret" {
 
 resource "google_secret_manager_secret_version" "sso_client_secret" {
   count      = var.zipline_auth_enabled ? 1 : 0
-  secret      = google_secret_manager_secret.sso_client_secret
+  secret      = google_secret_manager_secret.sso_client_secret[0].id
   secret_data = var.sso_client_secret
   depends_on = [
     google_project_service.secrets
