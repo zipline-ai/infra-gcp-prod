@@ -776,7 +776,7 @@ resource "random_password" "zipline_auth_secret" {
 
 resource "google_secret_manager_secret" "google_oauth_client_secret" {
   count     = var.zipline_auth_enabled ? 1 : 0
-  secret_id = "zipline-google-oauth"
+  secret_id = "${var.name_prefix}-zipline-google-oauth"
   replication {
     auto {}
   }
@@ -794,7 +794,7 @@ resource "google_secret_manager_secret_version" "google_oauth_client_secret" {
 
 resource "google_secret_manager_secret" "github_oauth_client_secret" {
   count     = var.zipline_auth_enabled ? 1 : 0
-  secret_id = "zipline-github-oauth"
+  secret_id = "${var.name_prefix}-zipline-github-oauth"
   replication {
     auto {}
   }
@@ -811,7 +811,7 @@ resource "google_secret_manager_secret_version" "github_oauth_client_secret" {
 
 resource "google_secret_manager_secret" "microsoft_entra_oauth_client_secret" {
   count     = var.zipline_auth_enabled ? 1 : 0
-  secret_id = "zipline-microsoft-entra-oauth"
+  secret_id = "${var.name_prefix}-zipline-microsoft-entra-oauth"
   replication {
     auto {}
   }
@@ -828,7 +828,7 @@ resource "google_secret_manager_secret_version" "microsoft_entra_oauth_client_se
 
 resource "google_secret_manager_secret" "sso_client_secret" {
   count     = var.zipline_auth_enabled ? 1 : 0
-  secret_id = "zipline-sso-client"
+  secret_id = "${var.name_prefix}-zipline-sso-client"
   replication {
     auto {}
   }
