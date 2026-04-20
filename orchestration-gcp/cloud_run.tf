@@ -505,6 +505,13 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         name  = "PUBLIC_ORCH_SERVER_NAME"
         value = google_cloud_run_v2_service.orchestration.name
       }
+      dynamic "env" {
+        for_each = var.deploy_fetcher ? [1] : []
+        content {
+          name = "FETCHER_BASE_URL"
+          value = google_cloud_run_v2_service.chronon_fetcher[0].uri
+        }
+      }
       env {
         name  = "PROMETHEUS_NAMESPACE"
         value = var.name_prefix
@@ -1162,7 +1169,14 @@ resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_personnel_acc
   member   = "group:${var.personnel_email}"
 }
 
-
+resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_additional_access" {
+  for_each = var.deploy_fetcher ? var.fetcher_access_members : []
+  location = google_cloud_run_v2_service.chronon_fetcher[0].location
+  project  = google_cloud_run_v2_service.chronon_fetcher[0].project
+  name     = google_cloud_run_v2_service.chronon_fetcher[0].name
+  role     = "roles/run.invoker"
+  member   = each.value
+}
 
 ################################################################
 # Load Balancer Backend Services for Cloud Run services

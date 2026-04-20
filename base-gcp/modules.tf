@@ -25,9 +25,10 @@ module "orchestration" {
   vpc_name    = var.vpc_network_name != "" ? var.vpc_network_name : google_compute_network.zipline_vpc[0].name
   subnet_name = var.vpc_subnet_name != "" ? var.vpc_subnet_name : google_compute_subnetwork.zipline_subnet[0].name
 
-  allowed_ip_ranges = var.allowed_ip_ranges
-  disable_iap       = var.disable_iap
-  deploy_fetcher    = var.deploy_fetcher
+  allowed_ip_ranges      = var.allowed_ip_ranges
+  disable_iap            = var.disable_iap
+  deploy_fetcher         = var.deploy_fetcher
+  fetcher_access_members = var.fetcher_access_members
 
   read_only_ui = var.read_only_ui
 

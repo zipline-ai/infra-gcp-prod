@@ -175,3 +175,9 @@ variable "deploy_fetcher" {
   description = "Whether to deploy the fetcher service or not"
   default     = false
 }
+
+variable "fetcher_access_members" {
+  type        = set(string)
+  description = "List of users/groups who can access the fetcher service (e.g., user:alice@example.com, group:data-team@example.com"
+  default     = []
+}
