@@ -645,6 +645,20 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
           }
         }
       }
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "IDP_ROLE_MAPPING"
+          value = var.idp_role_mapping
+        }
+      }
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "IDP_GROUP_CLAIM"
+          value = var.idp_group_claim
+        }
+      }
 
 
       resources {
