@@ -141,7 +141,7 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
     }
 
     gce_cluster_config {
-      service_account = google_service_account.dataproc_sa[0].email
+      service_account = var.create_dataproc_sa ? google_service_account.dataproc_sa[0].email : data.google_service_account.dataproc_sa[0].email
       service_account_scopes = [
         "cloud-platform",
         "monitoring",
