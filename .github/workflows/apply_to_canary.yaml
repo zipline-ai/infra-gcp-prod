@@ -22,6 +22,9 @@ jobs:
           workload_identity_provider: projects/${{secrets.GCP_CANARY_PROJECT_NUMBER}}/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: github-actions@${{secrets.GCP_CANARY_PROJECT_ID}}.iam.gserviceaccount.com
 
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
       - uses: opentofu/setup-opentofu@v1
 
       - name: Pull Canary Config
@@ -53,9 +56,12 @@ jobs:
           workload_identity_provider: projects/${{secrets.GCP_CANARY_PROJECT_NUMBER}}/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: github-actions@${{secrets.GCP_CANARY_PROJECT_ID}}.iam.gserviceaccount.com
 
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
       - uses: opentofu/setup-opentofu@v1
 
-      - name: Pull Canary Config
+      - name: Pull CI Config
         working-directory: zipline-gcp
         run: bash pull_ci_config.sh
 
