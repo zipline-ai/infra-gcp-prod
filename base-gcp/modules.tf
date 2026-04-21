@@ -19,18 +19,36 @@ module "orchestration" {
   bigtable_instance_name       = google_bigtable_instance.zipline_bigtable_instance.name
   table_partitions_dataset     = google_bigtable_table.table_partitions.name
   data_quality_metrics_dataset = "DATA_QUALITY_METRICS"
-  dataproc_service_account     = google_service_account.dataproc_sa.id
+  dataproc_service_account     = var.create_dataproc_sa ? google_service_account.dataproc_sa[0].id : data.google_service_account.dataproc_sa[0].id
 
   vpc_id      = var.vpc_network_id != "" ? var.vpc_network_id : google_compute_network.zipline_vpc[0].id
   vpc_name    = var.vpc_network_name != "" ? var.vpc_network_name : google_compute_network.zipline_vpc[0].name
   subnet_name = var.vpc_subnet_name != "" ? var.vpc_subnet_name : google_compute_subnetwork.zipline_subnet[0].name
 
-  allowed_ip_ranges = var.allowed_ip_ranges
-  disable_iap       = var.disable_iap
+  allowed_ip_ranges      = var.allowed_ip_ranges
+  disable_iap            = var.disable_iap
+  deploy_fetcher         = var.deploy_fetcher
+  fetcher_access_members = var.fetcher_access_members
 
   read_only_ui = var.read_only_ui
 
   eval_impersonation_users = var.eval_impersonation_users
+
+  zipline_auth_enabled                = var.zipline_auth_enabled
+  google_oauth_client_id              = var.google_oauth_client_id
+  google_oauth_client_secret          = var.google_oauth_client_secret
+  github_oauth_client_id              = var.github_oauth_client_id
+  github_oauth_client_secret          = var.github_oauth_client_secret
+  microsoft_entra_tenant_id           = var.microsoft_entra_tenant_id
+  microsoft_entra_oauth_client_id     = var.microsoft_entra_oauth_client_id
+  microsoft_entra_oauth_client_secret = var.microsoft_entra_oauth_client_secret
+  sso_provider_id                     = var.sso_provider_id
+  sso_domain                          = var.sso_domain
+  sso_issuer                          = var.sso_issuer
+  sso_client_id                       = var.sso_client_id
+  sso_client_secret                   = var.sso_client_secret
+  idp_role_mapping                    = var.idp_role_mapping
+  idp_group_claim                     = var.idp_group_claim
 
   depends_on = [
     google_service_networking_connection.private_vpc_connection
