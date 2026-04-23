@@ -508,8 +508,8 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
       dynamic "env" {
         for_each = var.deploy_fetcher ? [1] : []
         content {
-          name = "FETCHER_BASE_URL"
-          value = google_cloud_run_v2_service.chronon_fetcher[0].uri
+          name  = "FETCHER_BASE_URL"
+          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/services/fetcher" : google_cloud_run_v2_service.chronon_fetcher[0].uri
         }
       }
       env {
@@ -521,21 +521,21 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         value = var.read_only_ui
       }
       env {
-        name = "ORCH_SERVICE_NAME"
+        name  = "ORCH_SERVICE_NAME"
         value = google_cloud_run_v2_service.orchestration.name
       }
       env {
-        name = "UI_SERVICE_NAME"
+        name  = "UI_SERVICE_NAME"
         value = "${var.name_prefix}-zipline-ui"
       }
       env {
-        name = "EVAL_SERVICE_NAME"
+        name  = "EVAL_SERVICE_NAME"
         value = google_cloud_run_v2_service.chronon_eval.name
       }
       dynamic "env" {
         for_each = var.deploy_fetcher ? [1] : []
         content {
-          name = "FETCHER_SERVICE_NAME"
+          name  = "FETCHER_SERVICE_NAME"
           value = google_cloud_run_v2_service.chronon_fetcher[0].name
         }
       }
@@ -1377,7 +1377,33 @@ resource "google_compute_url_map" "zipline_ui_url_map" {
   name    = "${var.name_prefix}-zipline-ui-url-map"
   project = var.project_id
 
-  default_service = google_compute_backend_service.zipline_ui_backend_service[0].id
+  host_rule {
+    hosts        = [var.zipline_ui_domain]
+    path_matcher = "zipline-ui-paths"
+  }
+
+  path_matcher {
+    name            = "zipline-ui-paths"
+    default_service = google_compute_backend_service.zipline_ui_backend_service[0].id
+
+    dynamic "route_rules" {
+      for_each = var.deploy_fetcher ? [1] : []
+      content {
+        priority = 1
+        service  = google_compute_backend_service.zipline_fetcher_backend_service[0].id
+
+        match_rules {
+          prefix_match = "/services/fetcher"
+        }
+
+        route_action {
+          url_rewrite {
+            path_prefix_rewrite = "/"
+          }
+        }
+      }
+    }
+  }
 }
 
 resource "google_compute_managed_ssl_certificate" "zipline_ui_ssl_cert" {
@@ -1502,6 +1528,47 @@ resource "google_compute_global_forwarding_rule" "zipline_eval_forwarding_rule" 
 
   load_balancing_scheme = "EXTERNAL_MANAGED"
   target                = google_compute_target_https_proxy.zipline_eval_https_proxy[0].id
+}
+
+
+resource "google_compute_region_network_endpoint_group" "zipline_fetcher_neg" {
+  count                 = var.deploy_fetcher && var.zipline_ui_domain != "" ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-fetcher-neg"
+  project               = var.project_id
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+
+  cloud_run {
+    service = google_cloud_run_v2_service.chronon_fetcher[0].name
+  }
+}
+
+resource "google_compute_backend_service" "zipline_fetcher_backend_service" {
+  count                 = var.deploy_fetcher && var.zipline_ui_domain != "" ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-fetcher-backend-service"
+  project               = var.project_id
+  protocol              = "HTTPS"
+  timeout_sec           = 30
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  backend {
+    group = google_compute_region_network_endpoint_group.zipline_fetcher_neg[0].id
+  }
+
+  iap {
+    enabled = true
+  }
+
+  security_policy = length(var.allowed_ip_ranges) > 0 ? google_compute_security_policy.restrict_ingress_policy[0].id : null
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+
+  depends_on = [
+    google_cloud_run_v2_service.chronon_fetcher,
+  ]
 }
 
 
