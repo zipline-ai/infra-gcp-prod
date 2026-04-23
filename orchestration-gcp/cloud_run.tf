@@ -520,6 +520,25 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         name  = "READ_ONLY"
         value = var.read_only_ui
       }
+      env {
+        name = "ORCH_SERVICE_NAME"
+        value = google_cloud_run_v2_service.orchestration.name
+      }
+      env {
+        name = "UI_SERVICE_NAME"
+        value = "${var.name_prefix}-zipline-ui"
+      }
+      env {
+        name = "EVAL_SERVICE_NAME"
+        value = google_cloud_run_v2_service.chronon_eval.name
+      }
+      dynamic "env" {
+        for_each = var.deploy_fetcher ? [1] : []
+        content {
+          name = "FETCHER_SERVICE_NAME"
+          value = google_cloud_run_v2_service.chronon_fetcher[0].name
+        }
+      }
       # Zipline Authentication
       env {
         name  = "AUTH_ENABLED"
