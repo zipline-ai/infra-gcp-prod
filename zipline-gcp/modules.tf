@@ -13,6 +13,7 @@ module "base_setup" {
   hub_domain                  = var.hub_domain
   zipline_ui_domain           = var.zipline_ui_domain
   zipline_eval_domain         = var.zipline_eval_domain
+  zipline_fetcher_domain      = var.zipline_fetcher_domain
   vpc_network_name            = var.vpc_network_name
   vpc_network_id              = var.vpc_network_id
   vpc_subnet_name             = var.vpc_subnet_name
@@ -67,6 +68,10 @@ output "Hub_DNS_Instructions" {
 
 output "Eval_DNS_Instructions" {
   value = module.base_setup.Eval_DNS_Instructions
+}
+
+output "Fetcher_DNS_Instructions" {
+  value = module.base_setup.Fetcher_DNS_Instructions
 }
 
 output "eval_service_account_email" {

@@ -31,6 +31,11 @@ variable "zipline_eval_domain" {
   default     = ""
 }
 
+variable "zipline_fetcher_domain" {
+  description = "Set to provide a URL for the Zipline fetcher service."
+  default     = ""
+}
+
 variable "vpc_id" {}
 
 variable "vpc_name" {}

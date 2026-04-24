@@ -52,6 +52,11 @@ variable "zipline_eval_domain" {
   default     = ""
 }
 
+variable "zipline_fetcher_domain" {
+  description = "Set to provide a URL for the Zipline fetcher service."
+  default     = ""
+}
+
 variable "vpc_network_name" {
   description = "The name of the VPC network to deploy resources into. If not set, one will be created."
   default     = ""

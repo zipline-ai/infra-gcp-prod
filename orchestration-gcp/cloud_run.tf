@@ -509,7 +509,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         for_each = var.deploy_fetcher ? [1] : []
         content {
           name  = "FETCHER_BASE_URL"
-          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/services/fetcher" : google_cloud_run_v2_service.chronon_fetcher[0].uri
+          value = google_cloud_run_v2_service.chronon_fetcher[0].uri
         }
       }
       env {
@@ -1377,33 +1377,7 @@ resource "google_compute_url_map" "zipline_ui_url_map" {
   name    = "${var.name_prefix}-zipline-ui-url-map"
   project = var.project_id
 
-  host_rule {
-    hosts        = [var.zipline_ui_domain]
-    path_matcher = "zipline-ui-paths"
-  }
-
-  path_matcher {
-    name            = "zipline-ui-paths"
-    default_service = google_compute_backend_service.zipline_ui_backend_service[0].id
-
-    dynamic "route_rules" {
-      for_each = var.deploy_fetcher ? [1] : []
-      content {
-        priority = 1
-        service  = google_compute_backend_service.zipline_fetcher_backend_service[0].id
-
-        match_rules {
-          prefix_match = "/services/fetcher"
-        }
-
-        route_action {
-          url_rewrite {
-            path_prefix_rewrite = "/"
-          }
-        }
-      }
-    }
-  }
+  default_service = google_compute_backend_service.zipline_ui_backend_service[0].id
 }
 
 resource "google_compute_managed_ssl_certificate" "zipline_ui_ssl_cert" {
@@ -1532,7 +1506,7 @@ resource "google_compute_global_forwarding_rule" "zipline_eval_forwarding_rule" 
 
 
 resource "google_compute_region_network_endpoint_group" "zipline_fetcher_neg" {
-  count                 = var.deploy_fetcher && var.zipline_ui_domain != "" ? 1 : 0
+  count                 = var.deploy_fetcher && var.zipline_fetcher_domain != "" ? 1 : 0
   name                  = "${var.name_prefix}-zipline-fetcher-neg"
   project               = var.project_id
   region                = var.region
@@ -1544,7 +1518,7 @@ resource "google_compute_region_network_endpoint_group" "zipline_fetcher_neg" {
 }
 
 resource "google_compute_backend_service" "zipline_fetcher_backend_service" {
-  count                 = var.deploy_fetcher && var.zipline_ui_domain != "" ? 1 : 0
+  count                 = var.deploy_fetcher && var.zipline_fetcher_domain != "" ? 1 : 0
   name                  = "${var.name_prefix}-zipline-fetcher-backend-service"
   project               = var.project_id
   protocol              = "HTTPS"
@@ -1569,6 +1543,52 @@ resource "google_compute_backend_service" "zipline_fetcher_backend_service" {
   depends_on = [
     google_cloud_run_v2_service.chronon_fetcher,
   ]
+}
+
+resource "google_compute_url_map" "zipline_fetcher_url_map" {
+  count   = var.deploy_fetcher && var.zipline_fetcher_domain != "" ? 1 : 0
+  name    = "${var.name_prefix}-zipline-fetcher-url-map"
+  project = var.project_id
+
+  default_service = google_compute_backend_service.zipline_fetcher_backend_service[0].id
+}
+
+resource "google_compute_managed_ssl_certificate" "zipline_fetcher_ssl_cert" {
+  count   = var.deploy_fetcher && var.zipline_fetcher_domain != "" ? 1 : 0
+  name    = "${var.name_prefix}-zipline-fetcher-ssl-cert"
+  project = var.project_id
+
+  managed {
+    domains = [var.zipline_fetcher_domain]
+  }
+}
+
+resource "google_compute_target_https_proxy" "zipline_fetcher_https_proxy" {
+  count   = var.deploy_fetcher && var.zipline_fetcher_domain != "" ? 1 : 0
+  name    = "${var.name_prefix}-zipline-fetcher-https-proxy"
+  project = var.project_id
+
+  url_map          = google_compute_url_map.zipline_fetcher_url_map[0].id
+  ssl_certificates = [google_compute_managed_ssl_certificate.zipline_fetcher_ssl_cert[0].id]
+  ssl_policy       = google_compute_ssl_policy.ingress_ssl_policy.id
+}
+
+resource "google_compute_global_address" "zipline_fetcher_address" {
+  count   = var.deploy_fetcher && var.zipline_fetcher_domain != "" ? 1 : 0
+  name    = "${var.name_prefix}-zipline-fetcher-lb-ip"
+  project = var.project_id
+}
+
+resource "google_compute_global_forwarding_rule" "zipline_fetcher_forwarding_rule" {
+  count       = var.deploy_fetcher && var.zipline_fetcher_domain != "" ? 1 : 0
+  name        = "${var.name_prefix}-zipline-fetcher-forwarding-rule"
+  project     = var.project_id
+  ip_address  = google_compute_global_address.zipline_fetcher_address[0].address
+  ip_protocol = "TCP"
+  port_range  = "443"
+
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  target                = google_compute_target_https_proxy.zipline_fetcher_https_proxy[0].id
 }
 
 
@@ -1609,6 +1629,10 @@ output "Hub_DNS_Instructions" {
 
 output "Eval_DNS_Instructions" {
   value = var.zipline_eval_domain != "" ? "Create an A record pointing ${var.zipline_eval_domain} to ${google_compute_global_address.zipline_eval_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
+}
+
+output "Fetcher_DNS_Instructions" {
+  value = var.zipline_fetcher_domain != "" ? "Create an A record pointing ${var.zipline_fetcher_domain} to ${google_compute_global_address.zipline_fetcher_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
 }
 
 output "eval_service_account_email" {
