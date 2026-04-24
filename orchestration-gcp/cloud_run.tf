@@ -1197,6 +1197,15 @@ resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_additional_ac
   member   = each.value
 }
 
+resource "google_cloud_run_v2_service_iam_member" "chronon_fetcher_open_access" {
+  count    = var.deploy_fetcher && var.fetcher_open_access ? 1 : 0
+  location = google_cloud_run_v2_service.chronon_fetcher[0].location
+  project = google_cloud_run_v2_service.chronon_fetcher[0].project
+  name    = google_cloud_run_v2_service.chronon_fetcher[0].name
+  role    = "roles/run.invoker"
+  member  = "allUsers"
+}
+
 ################################################################
 # Load Balancer Backend Services for Cloud Run services
 

@@ -29,6 +29,7 @@ module "orchestration" {
   disable_iap            = var.disable_iap
   deploy_fetcher         = var.deploy_fetcher
   fetcher_access_members = var.fetcher_access_members
+  fetcher_open_access    = var.fetcher_open_access
 
   read_only_ui = var.read_only_ui
 

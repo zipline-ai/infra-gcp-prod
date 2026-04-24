@@ -181,3 +181,9 @@ variable "fetcher_access_members" {
   description = "List of users/groups who can access the fetcher service (e.g., user:alice@example.com, group:data-team@example.com"
   default     = []
 }
+
+variable "fetcher_open_access" {
+  type        = bool
+  description = "Whether to open access to the fetcher"
+  default     = false
+}

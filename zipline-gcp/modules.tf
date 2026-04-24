@@ -25,6 +25,7 @@ module "base_setup" {
   setup_dataproc_cluster      = var.setup_dataproc_cluster
   deploy_fetcher              = var.deploy_fetcher
   fetcher_access_members      = var.fetcher_access_members
+  fetcher_open_access         = var.fetcher_open_access
   create_dataproc_sa          = var.create_dataproc_sa
 
   zipline_auth_enabled                = var.zipline_auth_enabled
