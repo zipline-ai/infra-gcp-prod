@@ -1359,7 +1359,7 @@ resource "google_compute_backend_service" "zipline_ui_backend_service" {
   }
 
   iap {
-    enabled = !var.zipline_auth_enabled
+    enabled = !(var.zipline_auth_enabled || var.disable_iap)
   }
 
   security_policy = length(var.allowed_ip_ranges) > 0 ? google_compute_security_policy.restrict_ingress_policy[0].id : null
