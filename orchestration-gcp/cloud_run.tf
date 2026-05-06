@@ -981,6 +981,13 @@ resource "google_cloud_run_v2_service_iam_member" "eval_personnel_access" {
   member   = "group:${var.personnel_email}"
 }
 
+resource "google_cloud_run_v2_service_iam_member" "eval_all_access" {
+  name     = google_cloud_run_v2_service.chronon_eval.name
+  location = google_cloud_run_v2_service.chronon_eval.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
 resource "google_cloud_run_v2_service_iam_member" "eval_iap_access" {
   name     = google_cloud_run_v2_service.chronon_eval.name
   location = google_cloud_run_v2_service.chronon_eval.location
@@ -1443,7 +1450,7 @@ resource "google_compute_backend_service" "zipline_eval_backend_service" {
   }
 
   iap {
-    enabled = true
+    enabled = false
   }
 
   security_policy = length(var.allowed_ip_ranges) > 0 ? google_compute_security_policy.restrict_ingress_policy[0].id : null
