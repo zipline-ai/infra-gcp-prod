@@ -769,6 +769,14 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
   member              = "allUsers"
 }
 
+resource "google_cloud_run_v2_service_iam_member" "ui_all_access" {
+  count    = var.zipline_auth_enabled ? 1 : 0
+  name     = google_cloud_run_v2_service.zipline_ui.name
+  location = google_cloud_run_v2_service.zipline_ui.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
 ## Auth Secrets
 
 resource "google_secret_manager_secret" "zipline_auth" {
