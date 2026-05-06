@@ -1044,18 +1044,6 @@ resource "google_cloud_run_v2_service" "chronon_fetcher" {
         name  = "GCP_LOCATION"
         value = var.region
       }
-      # Zipline Authentication
-      env {
-        name  = "AUTH_ENABLED"
-        value = var.zipline_auth_enabled
-      }
-      dynamic "env" {
-        for_each = var.zipline_auth_enabled ? [1] : []
-        content {
-          name  = "AUTH_JWKS_URL"
-          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/jwks" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app/api/auth/jwks"
-        }
-      }
 
       resources {
         limits = {
