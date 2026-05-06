@@ -733,6 +733,7 @@ resource "google_cloud_run_v2_service_iam_member" "ui_users_access" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "ui_iap_access" {
+  count    = !(var.zipline_auth_enabled || var.disable_iap) && var.zipline_ui_domain != "" ? 1 : 0
   name     = google_cloud_run_v2_service.zipline_ui.name
   location = google_cloud_run_v2_service.zipline_ui.location
   role     = "roles/run.invoker"
@@ -740,7 +741,7 @@ resource "google_cloud_run_v2_service_iam_member" "ui_iap_access" {
 }
 
 resource "google_iap_web_backend_service_iam_member" "ui_iap_users_access" {
-  count               = var.users_email != "" && var.zipline_ui_domain != "" ? 1 : 0
+  count               = !(var.zipline_auth_enabled || var.disable_iap) && var.users_email != "" && var.zipline_ui_domain != "" ? 1 : 0
   project             = var.project_id
   web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
   role                = "roles/iap.httpsResourceAccessor"
@@ -753,7 +754,7 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_users_access" {
 }
 
 resource "google_iap_web_backend_service_iam_member" "ui_iap_personnel_access" {
-  count               = var.zipline_ui_domain != "" ? 1 : 0
+  count               = !(var.zipline_auth_enabled || var.disable_iap) && var.zipline_ui_domain != "" ? 1 : 0
   project             = var.project_id
   web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
   role                = "roles/iap.httpsResourceAccessor"
