@@ -978,41 +978,12 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
 }
 
 # IAM policy to allow orchestration service account to invoke eval service
-resource "google_cloud_run_v2_service_iam_member" "eval_orchestration_access" {
-  location = google_cloud_run_v2_service.chronon_eval.location
-  project  = google_cloud_run_v2_service.chronon_eval.project
-  name     = google_cloud_run_v2_service.chronon_eval.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.orchestration_service_account.email}"
-}
-
-resource "google_cloud_run_v2_service_iam_member" "eval_personnel_access" {
-  name     = google_cloud_run_v2_service.chronon_eval.name
-  location = google_cloud_run_v2_service.chronon_eval.location
-  role     = "roles/run.invoker"
-  member   = "group:${var.personnel_email}"
-}
 
 resource "google_cloud_run_v2_service_iam_member" "eval_all_access" {
   name     = google_cloud_run_v2_service.chronon_eval.name
   location = google_cloud_run_v2_service.chronon_eval.location
   role     = "roles/run.invoker"
   member   = "allUsers"
-}
-
-resource "google_cloud_run_v2_service_iam_member" "eval_iap_access" {
-  name     = google_cloud_run_v2_service.chronon_eval.name
-  location = google_cloud_run_v2_service.chronon_eval.location
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:service-${var.project_number}@gcp-sa-iap.iam.gserviceaccount.com"
-}
-
-resource "google_iap_web_backend_service_iam_member" "eval_iap_personnel_access" {
-  count               = var.zipline_eval_domain != "" ? 1 : 0
-  project             = var.project_id
-  web_backend_service = google_compute_backend_service.zipline_eval_backend_service[0].name
-  role                = "roles/iap.httpsResourceAccessor"
-  member              = "group:${var.personnel_email}"
 }
 
 ################################################################
