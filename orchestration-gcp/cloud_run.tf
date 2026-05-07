@@ -733,6 +733,7 @@ resource "google_cloud_run_v2_service_iam_member" "ui_users_access" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "ui_iap_access" {
+  count    = !(var.zipline_auth_enabled || var.disable_iap) && var.zipline_ui_domain != "" ? 1 : 0
   name     = google_cloud_run_v2_service.zipline_ui.name
   location = google_cloud_run_v2_service.zipline_ui.location
   role     = "roles/run.invoker"
@@ -740,7 +741,7 @@ resource "google_cloud_run_v2_service_iam_member" "ui_iap_access" {
 }
 
 resource "google_iap_web_backend_service_iam_member" "ui_iap_users_access" {
-  count               = var.users_email != "" && var.zipline_ui_domain != "" ? 1 : 0
+  count               = !(var.zipline_auth_enabled || var.disable_iap) && var.users_email != "" && var.zipline_ui_domain != "" ? 1 : 0
   project             = var.project_id
   web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
   role                = "roles/iap.httpsResourceAccessor"
@@ -753,7 +754,7 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_users_access" {
 }
 
 resource "google_iap_web_backend_service_iam_member" "ui_iap_personnel_access" {
-  count               = var.zipline_ui_domain != "" ? 1 : 0
+  count               = !(var.zipline_auth_enabled || var.disable_iap) && var.zipline_ui_domain != "" ? 1 : 0
   project             = var.project_id
   web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
   role                = "roles/iap.httpsResourceAccessor"
@@ -766,6 +767,14 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
   web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
   role                = "roles/iap.httpsResourceAccessor"
   member              = "allUsers"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "ui_all_access" {
+  count    = var.zipline_auth_enabled ? 1 : 0
+  name     = google_cloud_run_v2_service.zipline_ui.name
+  location = google_cloud_run_v2_service.zipline_ui.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
 
 ## Auth Secrets
@@ -926,6 +935,18 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
         name  = "EVAL_SERVICE_ACCOUNT_EMAIL"
         value = google_service_account.eval_service_account.email
       }
+      # Zipline Authentication
+      env {
+        name  = "AUTH_ENABLED"
+        value = var.zipline_auth_enabled
+      }
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "AUTH_JWKS_URL"
+          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/jwks" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app/api/auth/jwks"
+        }
+      }
 
       resources {
         limits = {
@@ -966,34 +987,12 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
 }
 
 # IAM policy to allow orchestration service account to invoke eval service
-resource "google_cloud_run_v2_service_iam_member" "eval_orchestration_access" {
-  location = google_cloud_run_v2_service.chronon_eval.location
-  project  = google_cloud_run_v2_service.chronon_eval.project
-  name     = google_cloud_run_v2_service.chronon_eval.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.orchestration_service_account.email}"
-}
 
-resource "google_cloud_run_v2_service_iam_member" "eval_personnel_access" {
+resource "google_cloud_run_v2_service_iam_member" "eval_all_access" {
   name     = google_cloud_run_v2_service.chronon_eval.name
   location = google_cloud_run_v2_service.chronon_eval.location
   role     = "roles/run.invoker"
-  member   = "group:${var.personnel_email}"
-}
-
-resource "google_cloud_run_v2_service_iam_member" "eval_iap_access" {
-  name     = google_cloud_run_v2_service.chronon_eval.name
-  location = google_cloud_run_v2_service.chronon_eval.location
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:service-${var.project_number}@gcp-sa-iap.iam.gserviceaccount.com"
-}
-
-resource "google_iap_web_backend_service_iam_member" "eval_iap_personnel_access" {
-  count               = var.zipline_eval_domain != "" ? 1 : 0
-  project             = var.project_id
-  web_backend_service = google_compute_backend_service.zipline_eval_backend_service[0].name
-  role                = "roles/iap.httpsResourceAccessor"
-  member              = "group:${var.personnel_email}"
+  member   = "allUsers"
 }
 
 ################################################################
@@ -1357,7 +1356,7 @@ resource "google_compute_backend_service" "zipline_ui_backend_service" {
   }
 
   iap {
-    enabled = true
+    enabled = !(var.zipline_auth_enabled || var.disable_iap)
   }
 
   security_policy = length(var.allowed_ip_ranges) > 0 ? google_compute_security_policy.restrict_ingress_policy[0].id : null
@@ -1443,7 +1442,7 @@ resource "google_compute_backend_service" "zipline_eval_backend_service" {
   }
 
   iap {
-    enabled = true
+    enabled = false
   }
 
   security_policy = length(var.allowed_ip_ranges) > 0 ? google_compute_security_policy.restrict_ingress_policy[0].id : null
