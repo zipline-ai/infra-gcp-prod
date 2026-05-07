@@ -1640,7 +1640,7 @@ output "Eval_DNS_Instructions" {
 }
 
 output "Fetcher_DNS_Instructions" {
-  value = var.zipline_fetcher_domain != "" ? "Create an A record pointing ${var.zipline_fetcher_domain} to ${google_compute_global_address.zipline_fetcher_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
+  value = var.deploy_fetcher && var.zipline_fetcher_domain != "" ? "Create an A record pointing ${var.zipline_fetcher_domain} to ${google_compute_global_address.zipline_fetcher_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
 }
 
 output "eval_service_account_email" {
