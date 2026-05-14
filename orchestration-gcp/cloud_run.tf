@@ -895,7 +895,7 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
 
     service_account = google_service_account.eval_service_account.email
     labels = {
-      container_name = "chronon-eval"
+      container_name = "eval"
     }
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_hub_remote_repository.repository_id}/ziplineai/eval-gcp:${var.zipline_version}"
@@ -1020,6 +1020,9 @@ resource "google_cloud_run_v2_service" "chronon_fetcher" {
 
     service_account = google_service_account.orchestration_service_account.email
 
+    labels = {
+      container_name = "fetcher"
+    }
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_hub_remote_repository.repository_id}/ziplineai/chronon-fetcher:${var.zipline_version}"
       name  = "chronon-fetcher"
