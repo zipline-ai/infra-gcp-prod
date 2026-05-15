@@ -476,6 +476,9 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
       egress = "ALL_TRAFFIC"
     }
     service_account = google_service_account.orchestration_service_account.email
+    labels = {
+      container_name = "web-ui"
+    }
     containers {
       name  = "web-ui"
       image = "${google_artifact_registry_repository.docker_hub_remote_repository.location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_hub_remote_repository.repository_id}/ziplineai/web-ui:${var.zipline_version}"
@@ -709,7 +712,6 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
   lifecycle {
     ignore_changes = [
       template[0].containers[0].resources[0].cpu_idle,
-      template[0].labels,
       client,
       client_version,
       scaling,
@@ -892,7 +894,9 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
     }
 
     service_account = google_service_account.eval_service_account.email
-
+    labels = {
+      container_name = "eval"
+    }
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_hub_remote_repository.repository_id}/ziplineai/eval-gcp:${var.zipline_version}"
       name  = "chronon-eval"
@@ -1016,6 +1020,9 @@ resource "google_cloud_run_v2_service" "chronon_fetcher" {
 
     service_account = google_service_account.orchestration_service_account.email
 
+    labels = {
+      container_name = "fetcher"
+    }
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_hub_remote_repository.repository_id}/ziplineai/chronon-fetcher:${var.zipline_version}"
       name  = "chronon-fetcher"
@@ -1156,12 +1163,7 @@ resource "google_cloud_run_v2_service" "chronon_fetcher" {
     percent = 100
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
   }
-
-  lifecycle {
-    ignore_changes = [
-      template[0].containers[0].image,
-    ]
-  }
+  
   depends_on = [
     google_service_account.orchestration_service_account,
   ]
