@@ -52,6 +52,10 @@ output "ui_address" {
   value = module.base_setup.ui_address
 }
 
+output "fetcher_address" {
+  value = module.base_setup.fetcher_address
+}
+
 output "eval_service_url" {
   value       = module.base_setup.eval_service_url
   description = "URL of the Chronon Eval service"

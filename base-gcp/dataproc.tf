@@ -3,6 +3,8 @@ resource "google_service_account" "dataproc_sa" {
   project      = data.google_project.zipline.project_id
   account_id   = "dataproc"
   display_name = "Dataproc SA"
+
+  depends_on = [google_project_service.iam]
 }
 
 data "google_service_account" "dataproc_sa" {
@@ -98,6 +100,8 @@ resource "google_dataproc_autoscaling_policy" "zipline_autoscaling_policy" {
       scale_up_factor               = 1.0
     }
   }
+
+  depends_on = [google_project_service.dataproc]
 }
 
 # Static Dataproc Cluster
@@ -180,6 +184,9 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
     }
   }
   depends_on = [
+    google_project_service.compute,
+    google_project_service.dataproc,
+    google_project_service.storage,
     google_project_iam_member.dataproc_worker,
     google_storage_bucket_iam_member.dataproc-bucket-binding,
     google_project_iam_member.dataproc_bigquery,
@@ -189,4 +196,8 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
 
   ]
 
+}
+
+output "dataproc_sa_name" {
+  value = var.create_dataproc_sa ? google_service_account.dataproc_sa[0].name : ""
 }

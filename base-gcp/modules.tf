@@ -51,6 +51,13 @@ module "orchestration" {
   idp_group_claim                     = var.idp_group_claim
 
   depends_on = [
+    google_project_service.bigquery,
+    google_project_service.cloud_resource_manager,
+    google_project_service.compute,
+    google_project_service.iam,
+    google_project_service.pubsub,
+    google_project_service.service_usage,
+    google_project_service.storage,
     google_service_networking_connection.private_vpc_connection
   ]
 
@@ -74,6 +81,10 @@ output "hub_address" {
 
 output "ui_address" {
   value = module.orchestration.ui_address
+}
+
+output "fetcher_address" {
+  value = module.orchestration.fetcher_address
 }
 
 output "eval_service_url" {

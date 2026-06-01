@@ -1,4 +1,12 @@
 # Google Artifact Registry - Remote Repository for Docker Hub
+resource "google_project_service" "artifact_registry" {
+  project = var.project_id
+  service = "artifactregistry.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
 resource "google_artifact_registry_repository" "docker_hub_remote_repository" {
   format        = "DOCKER"
   repository_id = "${var.name_prefix}-zipline-docker-hub-proxy"
@@ -19,6 +27,7 @@ resource "google_artifact_registry_repository" "docker_hub_remote_repository" {
     }
   }
   depends_on = [
+    google_project_service.artifact_registry,
     google_secret_manager_secret_iam_member.artifact_registry_secret_access
   ]
 }
@@ -511,7 +520,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
       dynamic "env" {
         for_each = var.deploy_fetcher ? [1] : []
         content {
-          name = "FETCHER_BASE_URL"
+          name  = "FETCHER_BASE_URL"
           value = google_cloud_run_v2_service.chronon_fetcher[0].uri
         }
       }
@@ -524,21 +533,21 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         value = var.read_only_ui
       }
       env {
-        name = "ORCH_SERVICE_NAME"
+        name  = "ORCH_SERVICE_NAME"
         value = google_cloud_run_v2_service.orchestration.name
       }
       env {
-        name = "UI_SERVICE_NAME"
+        name  = "UI_SERVICE_NAME"
         value = "${var.name_prefix}-zipline-ui"
       }
       env {
-        name = "EVAL_SERVICE_NAME"
+        name  = "EVAL_SERVICE_NAME"
         value = google_cloud_run_v2_service.chronon_eval.name
       }
       dynamic "env" {
         for_each = var.deploy_fetcher ? [1] : []
         content {
-          name = "FETCHER_SERVICE_NAME"
+          name  = "FETCHER_SERVICE_NAME"
           value = google_cloud_run_v2_service.chronon_fetcher[0].name
         }
       }
@@ -1163,7 +1172,7 @@ resource "google_cloud_run_v2_service" "chronon_fetcher" {
     percent = 100
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
   }
-  
+
   depends_on = [
     google_service_account.orchestration_service_account,
   ]
@@ -1531,6 +1540,10 @@ output "hub_address" {
 
 output "ui_address" {
   value = var.zipline_ui_domain != "" ? var.zipline_ui_domain : google_cloud_run_v2_service.zipline_ui.uri
+}
+
+output "fetcher_address" {
+  value = var.deploy_fetcher ? google_cloud_run_v2_service.chronon_fetcher[0].uri : ""
 }
 
 output "UI_DNS_Instructions" {
