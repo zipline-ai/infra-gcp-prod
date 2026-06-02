@@ -485,7 +485,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
   location = var.region
 
   ingress              = var.zipline_ui_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
-  invoker_iam_disabled = var.zipline_ui_domain != "" ? false : true
+  invoker_iam_disabled = var.zipline_auth_enabled
   custom_audiences = [
     var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
   ]
@@ -574,6 +574,13 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         content {
           name  = "AUTH_URL"
           value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
+        }
+      }
+      dynamic "env" {
+        for_each = var.zipline_auth_enabled ? [1] : []
+        content {
+          name  = "AUTH_ALLOWED_HOSTS"
+          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain},${var.zipline_ui_domain},${google_compute_global_address.zipline_ui_address[0].address}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app,${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
         }
       }
       dynamic "env" {
@@ -794,7 +801,7 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "ui_all_access" {
-  count    = var.allow_public_access && var.zipline_auth_enabled ? 1 : 0
+  count    = var.allow_public_access && !var.zipline_auth_enabled ? 1 : 0
   name     = google_cloud_run_v2_service.zipline_ui.name
   location = google_cloud_run_v2_service.zipline_ui.location
   role     = "roles/run.invoker"
@@ -914,8 +921,8 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
   project             = var.project_id
   deletion_protection = false
 
-  ingress = var.zipline_eval_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
-
+  ingress              = var.zipline_eval_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+  invoker_iam_disabled = var.zipline_auth_enabled
   template {
     vpc_access {
       network_interfaces {
@@ -1049,6 +1056,7 @@ resource "google_cloud_run_v2_service" "chronon_fetcher" {
   location = var.region
   project  = var.project_id
 
+  invoker_iam_disabled = var.zipline_auth_enabled
   template {
 
     vpc_access {
@@ -1572,6 +1580,21 @@ output "hub_address" {
 
 output "ui_address" {
   value = var.zipline_ui_domain != "" ? var.zipline_ui_domain : google_cloud_run_v2_service.zipline_ui.uri
+}
+
+output "Google_OAuth_Redirect_URI_Instructions" {
+  value       = var.zipline_auth_enabled && var.google_oauth_client_id != "" ? "In Google Cloud Console, open APIs & Services > Credentials > your OAuth 2.0 Client ID, then add this Authorized redirect URI: ${var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/callback/google" : "${google_cloud_run_v2_service.zipline_ui.uri}/api/auth/callback/google"}" : null
+  description = "Instructions for registering the Google OAuth redirect URI when Google auth is enabled."
+}
+
+output "GitHub_OAuth_Redirect_URI_Instructions" {
+  value       = var.zipline_auth_enabled && var.github_oauth_client_id != "" ? "In GitHub, open Settings > Developer settings > OAuth Apps > your OAuth App, then set this Authorization callback URL: ${var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/callback/github" : "${google_cloud_run_v2_service.zipline_ui.uri}/api/auth/callback/github"}" : null
+  description = "Instructions for registering the GitHub OAuth callback URL when GitHub auth is enabled."
+}
+
+output "Microsoft_Entra_OAuth_Redirect_URI_Instructions" {
+  value       = var.zipline_auth_enabled && var.microsoft_entra_oauth_client_id != "" ? "In Azure Portal, open Microsoft Entra ID > App registrations > your app registration > Authentication, then add this Web redirect URI: ${var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/callback/microsoft-entra-id" : "${google_cloud_run_v2_service.zipline_ui.uri}/api/auth/callback/microsoft-entra-id"}" : null
+  description = "Instructions for registering the Microsoft Entra OAuth redirect URI when Microsoft Entra auth is enabled."
 }
 
 output "fetcher_address" {

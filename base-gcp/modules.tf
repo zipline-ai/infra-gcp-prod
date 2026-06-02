@@ -89,6 +89,21 @@ output "ui_address" {
   value = module.orchestration.ui_address
 }
 
+output "Google_OAuth_Redirect_URI_Instructions" {
+  value       = module.orchestration.Google_OAuth_Redirect_URI_Instructions
+  description = "Instructions for registering the Google OAuth redirect URI when Google auth is enabled."
+}
+
+output "GitHub_OAuth_Redirect_URI_Instructions" {
+  value       = module.orchestration.GitHub_OAuth_Redirect_URI_Instructions
+  description = "Instructions for registering the GitHub OAuth callback URL when GitHub auth is enabled."
+}
+
+output "Microsoft_Entra_OAuth_Redirect_URI_Instructions" {
+  value       = module.orchestration.Microsoft_Entra_OAuth_Redirect_URI_Instructions
+  description = "Instructions for registering the Microsoft Entra OAuth redirect URI when Microsoft Entra auth is enabled."
+}
+
 output "fetcher_address" {
   value = module.orchestration.fetcher_address
 }
