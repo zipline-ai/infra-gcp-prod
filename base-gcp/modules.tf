@@ -1,6 +1,11 @@
 module "orchestration" {
   source = "../orchestration-gcp"
 
+  providers = {
+    google = google
+    time   = time
+  }
+
   project_id       = data.google_project.zipline.project_id
   project_number   = data.google_project.zipline.number
   zipline_version  = var.zipline_version
@@ -27,6 +32,7 @@ module "orchestration" {
 
   allowed_ip_ranges      = var.allowed_ip_ranges
   disable_iap            = var.disable_iap
+  allow_public_access    = var.allow_public_access
   deploy_fetcher         = var.deploy_fetcher
   fetcher_access_members = var.fetcher_access_members
 

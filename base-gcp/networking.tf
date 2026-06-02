@@ -35,6 +35,31 @@ resource "google_compute_firewall" "allow_access_from_dataproc_instances" {
   depends_on = [google_project_service.compute]
 }
 
+resource "google_compute_firewall" "allow_dataproc_node_to_node" {
+  name        = "${var.customer_name}-zipline-allow-dataproc-node-to-node"
+  network     = var.vpc_network_id != "" ? var.vpc_network_id : google_compute_network.zipline_vpc[0].id
+  direction   = "INGRESS"
+  source_tags = ["dataproc-node"]
+  target_tags = ["dataproc-node"]
+  priority    = 997
+
+  allow {
+    protocol = "tcp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "udp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "icmp"
+  }
+
+  depends_on = [google_project_service.compute]
+}
+
 resource "google_compute_network" "zipline_vpc" {
   count                   = var.vpc_network_name == "" ? 1 : 0
   name                    = "zipline-${var.customer_name}-vpc"

@@ -1,6 +1,11 @@
 module "base_setup" {
   source = "../base-gcp"
 
+  providers = {
+    google = google
+    time   = time
+  }
+
   customer_name               = var.customer_name
   region                      = var.region
   docker_hub_token            = var.docker_hub_token
@@ -18,6 +23,7 @@ module "base_setup" {
   vpc_subnet_name             = var.vpc_subnet_name
   allowed_ip_ranges           = var.allowed_ip_ranges
   disable_iap                 = var.disable_iap
+  allow_public_access         = var.allow_public_access
   dataproc_init_actions       = var.dataproc_init_actions
   create_bigquery_reservation = var.create_bigquery_reservation
   eval_impersonation_users    = var.eval_impersonation_users

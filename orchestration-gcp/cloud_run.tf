@@ -7,6 +7,20 @@ resource "google_project_service" "artifact_registry" {
   disable_on_destroy         = false
 }
 
+resource "time_sleep" "artifact_registry_service_agent" {
+  create_duration = "60s"
+
+  depends_on = [google_project_service.artifact_registry]
+}
+
+resource "google_project_iam_member" "artifact_registry_secret_accessor" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:service-${var.project_number}@gcp-sa-artifactregistry.iam.gserviceaccount.com"
+
+  depends_on = [time_sleep.artifact_registry_service_agent]
+}
+
 resource "google_artifact_registry_repository" "docker_hub_remote_repository" {
   format        = "DOCKER"
   repository_id = "${var.name_prefix}-zipline-docker-hub-proxy"
@@ -28,7 +42,8 @@ resource "google_artifact_registry_repository" "docker_hub_remote_repository" {
   }
   depends_on = [
     google_project_service.artifact_registry,
-    google_secret_manager_secret_iam_member.artifact_registry_secret_access
+    google_project_iam_member.artifact_registry_secret_accessor,
+    google_secret_manager_secret_version.docker_token_version
   ]
 }
 
@@ -37,6 +52,8 @@ resource "google_secret_manager_secret" "docker_token" {
   replication {
     auto {}
   }
+
+  depends_on = [google_project_service.secrets]
 }
 
 resource "google_secret_manager_secret_version" "docker_token_version" {
@@ -44,14 +61,9 @@ resource "google_secret_manager_secret_version" "docker_token_version" {
   secret_data = var.docker_hub_token
 }
 
-resource "google_secret_manager_secret_iam_member" "artifact_registry_secret_access" {
-  secret_id = google_secret_manager_secret.docker_token.id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:service-${var.project_number}@gcp-sa-artifactregistry.iam.gserviceaccount.com"
-}
-
 # Enable required APIs
 resource "google_project_service" "cloudrun_api" {
+  project = var.project_id
   service = "run.googleapis.com"
 
   disable_dependent_services = false
@@ -59,6 +71,7 @@ resource "google_project_service" "cloudrun_api" {
 }
 
 resource "google_project_service" "iap_api" {
+  project = var.project_id
   service = "iap.googleapis.com"
 
   disable_dependent_services = false
@@ -773,7 +786,7 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_personnel_access" {
 }
 
 resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
-  count               = var.disable_iap && var.zipline_ui_domain != "" ? 1 : 0
+  count               = var.allow_public_access && var.disable_iap && var.zipline_ui_domain != "" ? 1 : 0
   project             = var.project_id
   web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
   role                = "roles/iap.httpsResourceAccessor"
@@ -781,7 +794,7 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "ui_all_access" {
-  count    = var.zipline_auth_enabled ? 1 : 0
+  count    = var.allow_public_access && var.zipline_auth_enabled ? 1 : 0
   name     = google_cloud_run_v2_service.zipline_ui.name
   location = google_cloud_run_v2_service.zipline_ui.location
   role     = "roles/run.invoker"
@@ -796,6 +809,8 @@ resource "google_secret_manager_secret" "zipline_auth" {
   replication {
     auto {}
   }
+
+  depends_on = [google_project_service.secrets]
 }
 
 resource "google_secret_manager_secret_version" "zipline_auth" {
@@ -819,6 +834,8 @@ resource "google_secret_manager_secret" "google_oauth_client_secret" {
   replication {
     auto {}
   }
+
+  depends_on = [google_project_service.secrets]
 }
 
 resource "google_secret_manager_secret_version" "google_oauth_client_secret" {
@@ -837,6 +854,8 @@ resource "google_secret_manager_secret" "github_oauth_client_secret" {
   replication {
     auto {}
   }
+
+  depends_on = [google_project_service.secrets]
 }
 
 resource "google_secret_manager_secret_version" "github_oauth_client_secret" {
@@ -854,6 +873,8 @@ resource "google_secret_manager_secret" "microsoft_entra_oauth_client_secret" {
   replication {
     auto {}
   }
+
+  depends_on = [google_project_service.secrets]
 }
 
 resource "google_secret_manager_secret_version" "microsoft_entra_oauth_client_secret" {
@@ -871,6 +892,8 @@ resource "google_secret_manager_secret" "sso_client_secret" {
   replication {
     auto {}
   }
+
+  depends_on = [google_project_service.secrets]
 }
 
 resource "google_secret_manager_secret_version" "sso_client_secret" {
@@ -1002,10 +1025,19 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
 # IAM policy to allow orchestration service account to invoke eval service
 
 resource "google_cloud_run_v2_service_iam_member" "eval_all_access" {
+  count = var.allow_public_access ? 1 : 0
+
   name     = google_cloud_run_v2_service.chronon_eval.name
   location = google_cloud_run_v2_service.chronon_eval.location
   role     = "roles/run.invoker"
   member   = "allUsers"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "eval_orchestration_access" {
+  name     = google_cloud_run_v2_service.chronon_eval.name
+  location = google_cloud_run_v2_service.chronon_eval.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.orchestration_service_account.email}"
 }
 
 ################################################################

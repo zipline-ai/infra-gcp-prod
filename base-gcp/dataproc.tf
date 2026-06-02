@@ -13,70 +13,98 @@ data "google_service_account" "dataproc_sa" {
   account_id = "dataproc"
 }
 
+locals {
+  dataproc_service_account_email = var.create_dataproc_sa ? google_service_account.dataproc_sa[0].email : data.google_service_account.dataproc_sa[0].email
+}
+
 # Dataproc Roles
 
 resource "google_project_iam_member" "dataproc_worker" {
-  count   = var.create_dataproc_sa ? 1 : 0
+  count   = var.create_dataproc_sa || var.setup_dataproc_cluster ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/dataproc.worker"
-  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
+  member  = "serviceAccount:${local.dataproc_service_account_email}"
 }
 
 # BigQuery Roles
 
 resource "google_project_iam_member" "dataproc_bigquery" {
-  count   = var.create_dataproc_sa ? 1 : 0
+  count   = var.create_dataproc_sa || var.setup_dataproc_cluster ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.user"
-  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
+  member  = "serviceAccount:${local.dataproc_service_account_email}"
 }
 
 resource "google_project_iam_member" "dataproc_bigquery_connection" {
-  count   = var.create_dataproc_sa ? 1 : 0
+  count   = var.create_dataproc_sa || var.setup_dataproc_cluster ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.connectionUser"
-  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
+  member  = "serviceAccount:${local.dataproc_service_account_email}"
 }
 
 resource "google_project_iam_member" "dataproc_bigquery_data_editor" {
-  count   = var.create_dataproc_sa ? 1 : 0
+  count   = var.create_dataproc_sa || var.setup_dataproc_cluster ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/bigquery.dataEditor"
-  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
+  member  = "serviceAccount:${local.dataproc_service_account_email}"
 }
 
 # Bigtable Roles
 
 resource "google_project_iam_member" "dataproc_bigtable_user" {
-  count   = var.create_dataproc_sa ? 1 : 0
+  count   = var.create_dataproc_sa || var.setup_dataproc_cluster ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/bigtable.user"
-  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
+  member  = "serviceAccount:${local.dataproc_service_account_email}"
 }
 
 # Storage Roles
 
 resource "google_storage_bucket_iam_member" "dataproc-bucket-binding" {
-  count  = var.create_dataproc_sa ? 1 : 0
+  count  = var.create_dataproc_sa || var.setup_dataproc_cluster ? 1 : 0
   bucket = google_storage_bucket.zipline.name
   role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
+  member = "serviceAccount:${local.dataproc_service_account_email}"
 }
 
 resource "google_storage_bucket_iam_member" "dataproc-bucket-viewer-binding" {
-  count  = var.create_dataproc_sa ? 1 : 0
+  count  = var.create_dataproc_sa || var.setup_dataproc_cluster ? 1 : 0
   bucket = trimprefix(var.artifact_prefix, "gs://")
   role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
+  member = "serviceAccount:${local.dataproc_service_account_email}"
+}
+
+resource "google_project_iam_member" "dataproc_storage_admin" {
+  count   = var.create_dataproc_sa || var.setup_dataproc_cluster ? 1 : 0
+  project = data.google_project.zipline.project_id
+  role    = "roles/storage.admin"
+  member  = "serviceAccount:${local.dataproc_service_account_email}"
 }
 
 # PubSub Roles
 
 resource "google_project_iam_member" "dataproc_pubsub_editor" {
-  count   = var.create_dataproc_sa ? 1 : 0
+  count   = var.create_dataproc_sa || var.setup_dataproc_cluster ? 1 : 0
   project = data.google_project.zipline.project_id
   role    = "roles/pubsub.editor"
-  member  = "serviceAccount:${google_service_account.dataproc_sa[0].email}"
+  member  = "serviceAccount:${local.dataproc_service_account_email}"
+}
+
+resource "time_sleep" "dataproc_iam_propagation" {
+  count           = var.setup_dataproc_cluster ? 1 : 0
+  create_duration = "90s"
+
+  depends_on = [
+    google_project_iam_member.dataproc_worker,
+    google_project_iam_member.dataproc_bigquery,
+    google_project_iam_member.dataproc_bigquery_connection,
+    google_project_iam_member.dataproc_bigquery_data_editor,
+    google_project_iam_member.dataproc_bigtable_user,
+    google_project_iam_member.dataproc_storage_admin,
+    google_project_iam_member.dataproc_pubsub_editor,
+    google_storage_bucket_iam_member.dataproc-bucket-binding,
+    google_storage_bucket_iam_member.dataproc-bucket-viewer-binding
+  ]
 }
 
 # Autoscailing Policy
@@ -145,7 +173,7 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
     }
 
     gce_cluster_config {
-      service_account = var.create_dataproc_sa ? google_service_account.dataproc_sa[0].email : data.google_service_account.dataproc_sa[0].email
+      service_account = local.dataproc_service_account_email
       service_account_scopes = [
         "cloud-platform",
         "monitoring",
@@ -153,7 +181,7 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
         "https://www.googleapis.com/auth/devstorage.read_write",
         "https://www.googleapis.com/auth/logging.write",
       ]
-      subnetwork = var.dataproc_subnetwork
+      subnetwork = var.dataproc_subnetwork != "" ? var.dataproc_subnetwork : (var.vpc_subnet_name != "" ? var.vpc_subnet_name : google_compute_subnetwork.zipline_subnet[0].self_link)
       tags       = concat(var.dataproc_tags, ["dataproc-node"])
       metadata = {
         hive-version           = "3.1.2",
@@ -187,12 +215,8 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
     google_project_service.compute,
     google_project_service.dataproc,
     google_project_service.storage,
-    google_project_iam_member.dataproc_worker,
-    google_storage_bucket_iam_member.dataproc-bucket-binding,
-    google_project_iam_member.dataproc_bigquery,
-    google_project_iam_member.dataproc_bigquery_connection,
-    google_project_iam_member.dataproc_bigtable_user,
-    google_project_iam_member.dataproc_pubsub_editor,
+    google_compute_subnetwork.zipline_subnet,
+    time_sleep.dataproc_iam_propagation,
 
   ]
 
