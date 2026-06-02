@@ -63,7 +63,7 @@ resource "google_sql_database_instance" "orchestration_instance" {
     }
   }
   lifecycle {
-    prevent_destroy = false
+    prevent_destroy = true
     ignore_changes = [
       settings[0].ip_configuration[0]
     ]
@@ -76,14 +76,13 @@ resource "google_sql_database_instance" "orchestration_instance" {
   depends_on = [
     google_project_service.cloud_sql
   ]
-  deletion_protection = false
 }
 
 resource "google_sql_database" "orchestration_database" {
   name     = "execution-info"
   instance = google_sql_database_instance.orchestration_instance.name
   lifecycle {
-    prevent_destroy = false
+    prevent_destroy = true
   }
   deletion_policy = "ABANDON"
 }
