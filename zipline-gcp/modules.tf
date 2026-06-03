@@ -1,11 +1,6 @@
 module "base_setup" {
   source = "../base-gcp"
 
-  providers = {
-    google = google
-    time   = time
-  }
-
   customer_name               = var.customer_name
   region                      = var.region
   docker_hub_token            = var.docker_hub_token

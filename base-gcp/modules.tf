@@ -1,11 +1,6 @@
 module "orchestration" {
   source = "../orchestration-gcp"
 
-  providers = {
-    google = google
-    time   = time
-  }
-
   project_id       = data.google_project.zipline.project_id
   project_number   = data.google_project.zipline.number
   zipline_version  = var.zipline_version
