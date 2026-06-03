@@ -93,7 +93,6 @@ resource "time_sleep" "dataproc_iam_propagation" {
     google_project_iam_member.dataproc_bigquery_connection,
     google_project_iam_member.dataproc_bigquery_data_editor,
     google_project_iam_member.dataproc_bigtable_user,
-    google_project_iam_member.dataproc_storage_admin,
     google_project_iam_member.dataproc_pubsub_editor,
     google_storage_bucket_iam_member.dataproc-bucket-binding,
     google_storage_bucket_iam_member.dataproc-bucket-viewer-binding
