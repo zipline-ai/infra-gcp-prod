@@ -74,13 +74,6 @@ resource "google_storage_bucket_iam_member" "dataproc-bucket-viewer-binding" {
   member = "serviceAccount:${local.dataproc_service_account_email}"
 }
 
-resource "google_project_iam_member" "dataproc_storage_admin" {
-  count   = var.create_dataproc_sa || var.setup_dataproc_cluster ? 1 : 0
-  project = data.google_project.zipline.project_id
-  role    = "roles/storage.admin"
-  member  = "serviceAccount:${local.dataproc_service_account_email}"
-}
-
 # PubSub Roles
 
 resource "google_project_iam_member" "dataproc_pubsub_editor" {
@@ -92,7 +85,7 @@ resource "google_project_iam_member" "dataproc_pubsub_editor" {
 
 resource "time_sleep" "dataproc_iam_propagation" {
   count           = var.setup_dataproc_cluster ? 1 : 0
-  create_duration = "90s"
+  create_duration = "120s"
 
   depends_on = [
     google_project_iam_member.dataproc_worker,
