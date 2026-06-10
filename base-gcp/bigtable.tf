@@ -177,3 +177,34 @@ resource "google_bigtable_gc_policy" "data_quality_metrics_streaming_gc_policy" 
     number = 10000
   }
 }
+
+resource "google_bigtable_table" "enhanced_stats" {
+  instance_name = google_bigtable_instance.zipline_bigtable_instance.name
+  name          = "ENHANCED_STATS"
+  column_family {
+    family = "data"
+  }
+  column_family {
+    family = "cardinalityMap"
+  }
+}
+
+resource "google_bigtable_gc_policy" "enhanced_stats_data_gc_policy" {
+  instance_name = google_bigtable_instance.zipline_bigtable_instance.name
+  table         = google_bigtable_table.enhanced_stats.name
+  column_family = "data"
+
+  max_version {
+    number = 2000
+  }
+}
+
+resource "google_bigtable_gc_policy" "enhanced_stats_cardinality_map_gc_policy" {
+  instance_name = google_bigtable_instance.zipline_bigtable_instance.name
+  table         = google_bigtable_table.enhanced_stats.name
+  column_family = "cardinalityMap"
+
+  max_version {
+    number = 2000
+  }
+}
