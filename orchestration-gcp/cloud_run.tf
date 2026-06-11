@@ -412,6 +412,10 @@ resource "google_cloud_run_v2_service" "orchestration" {
     }
     service_account = google_service_account.orchestration_service_account.email
   }
+  scaling {
+    min_instance_count = 1
+    max_instance_count = 1
+  }
 
   depends_on = [
     google_artifact_registry_repository.docker_hub_remote_repository,
@@ -427,7 +431,6 @@ resource "google_cloud_run_v2_service" "orchestration" {
       template[0].labels,
       client,
       client_version,
-      scaling,
     ]
   }
 }
@@ -485,7 +488,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
 
       env {
         name  = "API_BASE_URL"
-        value = google_cloud_run_v2_service.orchestration.uri
+        value = var.hub_domain != "" ? "https://${var.hub_domain}" : google_cloud_run_v2_service.orchestration.uri
       }
       env {
         name  = "DATABASE_URL"
