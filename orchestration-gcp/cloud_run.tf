@@ -919,10 +919,9 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
   name                = "${var.name_prefix}-zipline-chronon-eval"
   location            = var.region
   project             = var.project_id
-  deletion_protection = false
 
   ingress              = var.zipline_eval_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
-  invoker_iam_disabled = var.zipline_auth_enabled
+  invoker_iam_disabled = var.zipline_auth_enabled || var.zipline_eval_domain != ""
   template {
     vpc_access {
       network_interfaces {
