@@ -18,6 +18,7 @@ module "base_setup" {
   vpc_subnet_name             = var.vpc_subnet_name
   allowed_ip_ranges           = var.allowed_ip_ranges
   disable_iap                 = var.disable_iap
+  allow_public_access         = var.allow_public_access
   dataproc_init_actions       = var.dataproc_init_actions
   create_bigquery_reservation = var.create_bigquery_reservation
   eval_impersonation_users    = var.eval_impersonation_users
@@ -50,6 +51,25 @@ output "hub_address" {
 
 output "ui_address" {
   value = module.base_setup.ui_address
+}
+
+output "Google_OAuth_Redirect_URI_Instructions" {
+  value       = module.base_setup.Google_OAuth_Redirect_URI_Instructions
+  description = "Instructions for registering the Google OAuth redirect URI when Google auth is enabled."
+}
+
+output "GitHub_OAuth_Redirect_URI_Instructions" {
+  value       = module.base_setup.GitHub_OAuth_Redirect_URI_Instructions
+  description = "Instructions for registering the GitHub OAuth callback URL when GitHub auth is enabled."
+}
+
+output "Microsoft_Entra_OAuth_Redirect_URI_Instructions" {
+  value       = module.base_setup.Microsoft_Entra_OAuth_Redirect_URI_Instructions
+  description = "Instructions for registering the Microsoft Entra OAuth redirect URI when Microsoft Entra auth is enabled."
+}
+
+output "fetcher_address" {
+  value = module.base_setup.fetcher_address
 }
 
 output "eval_service_url" {
