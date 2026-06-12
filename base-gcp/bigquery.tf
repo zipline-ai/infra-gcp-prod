@@ -7,6 +7,11 @@ resource "google_bigquery_reservation" "zipline_reservation" {
   autoscale {
     max_slots = 50
   }
+
+  depends_on = [
+    google_project_service.bigquery,
+    google_project_service.bigquery_reservation
+  ]
 }
 
 resource "google_bigquery_reservation_assignment" "query_assignment" {

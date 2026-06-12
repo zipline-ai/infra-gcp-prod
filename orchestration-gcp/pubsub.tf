@@ -113,6 +113,13 @@ resource "google_bigquery_table" "loggable_response" {
   deletion_protection = false
 }
 
+resource "google_project_iam_member" "pubsub_bigquery_writer" {
+  count   = var.deploy_fetcher ? 1 : 0
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:service-${var.project_number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
 ################################################################
 # Pub/Sub Subscription for BigQuery Writing
 
@@ -139,4 +146,8 @@ resource "google_pubsub_subscription" "logging_bigquery" {
   retry_policy {
     minimum_backoff = "0s"
   }
+
+  depends_on = [
+    google_project_iam_member.pubsub_bigquery_writer
+  ]
 }

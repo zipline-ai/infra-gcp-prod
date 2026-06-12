@@ -1,4 +1,5 @@
 resource "google_project_service" "cloud_sql" {
+  project = var.project_id
   service = "sqladmin.googleapis.com"
 
   disable_dependent_services = false
@@ -6,6 +7,7 @@ resource "google_project_service" "cloud_sql" {
 }
 
 resource "google_project_service" "secrets" {
+  project = var.project_id
   service = "secretmanager.googleapis.com"
 
   disable_dependent_services = false
@@ -18,6 +20,8 @@ resource "google_secret_manager_secret" "db_password" {
   replication {
     auto {}
   }
+
+  depends_on = [google_project_service.secrets]
 }
 
 resource "google_secret_manager_secret_version" "db_password" {
@@ -63,6 +67,11 @@ resource "google_sql_database_instance" "orchestration_instance" {
     ignore_changes = [
       settings[0].ip_configuration[0]
     ]
+  }
+  timeouts {
+    create = "60m"
+    update = "60m"
+    delete = "60m"
   }
   depends_on = [
     google_project_service.cloud_sql

@@ -79,6 +79,12 @@ variable "disable_iap" {
   default     = false
 }
 
+variable "allow_public_access" {
+  description = "Whether to create allUsers IAM grants for public Cloud Run/IAP access. Leave false for organizations that restrict public IAM members."
+  type        = bool
+  default     = false
+}
+
 variable "dataproc_init_actions" {
   description = "List of initialization actions to run on Dataproc clusters."
   type        = list(string)

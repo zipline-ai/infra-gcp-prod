@@ -18,8 +18,81 @@ resource "google_project_service" "monitoring" {
   disable_on_destroy         = false
 }
 
+resource "google_project_service" "service_usage" {
+  project = data.google_project.zipline.project_id
+  service = "serviceusage.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
+resource "google_project_service" "compute" {
+  project = data.google_project.zipline.project_id
+  service = "compute.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
+resource "google_project_service" "iam" {
+  project = data.google_project.zipline.project_id
+  service = "iam.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
+resource "google_project_service" "cloud_resource_manager" {
+  project = data.google_project.zipline.project_id
+  service = "cloudresourcemanager.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
+resource "google_project_service" "storage" {
+  project = data.google_project.zipline.project_id
+  service = "storage.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
+resource "google_project_service" "bigquery" {
+  project = data.google_project.zipline.project_id
+  service = "bigquery.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
+resource "google_project_service" "bigquery_reservation" {
+  project = data.google_project.zipline.project_id
+  service = "bigqueryreservation.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
+resource "google_project_service" "dataproc" {
+  project = data.google_project.zipline.project_id
+  service = "dataproc.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
+resource "google_project_service" "pubsub" {
+  project = data.google_project.zipline.project_id
+  service = "pubsub.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
 # Add Service Networking API (required for private IP)
 resource "google_project_service" "service_networking" {
+  project = data.google_project.zipline.project_id
   service = "servicenetworking.googleapis.com"
 
   disable_dependent_services = false

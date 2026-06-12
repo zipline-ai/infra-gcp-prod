@@ -13,7 +13,7 @@ rm -f .terraform.lock.hcl
 rm -f terraform.tfvars
 rm -rf .terraform
 
-gcloud storage cp gs://zipline-canary-vars/terraform.tfvars .
-gcloud storage cp gs://zipline-canary-vars/canary_backend.tf .
-gcloud storage cp gs://zipline-canary-vars/canary_divergences.tf .
-gcloud storage cp gs://zipline-canary-vars/.terraform.lock.hcl .
+gcloud storage cp gs://zipline-demo-vars/terraform.tfvars .
+gcloud storage cp gs://zipline-demo-vars/demo_backend.tf .
+gcloud storage cp gs://zipline-demo-vars/demo_divergences.tf .
+gcloud storage cp gs://zipline-demo-vars/.terraform.lock.hcl .
