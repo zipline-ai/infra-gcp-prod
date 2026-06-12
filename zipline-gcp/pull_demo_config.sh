@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+## For Internal Use Only
+
 rm -f canary_backend.tf
 rm -f ci_backend.tf
 rm -f demo_backend.tf
