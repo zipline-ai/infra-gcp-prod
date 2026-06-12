@@ -538,6 +538,10 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         name = "EVAL_SERVICE_NAME"
         value = google_cloud_run_v2_service.chronon_eval.name
       }
+      env {
+        name = "EVAL_URL"
+        value = google_cloud_run_v2_service.chronon_eval.uri
+      }
       dynamic "env" {
         for_each = var.deploy_fetcher ? [1] : []
         content {
@@ -883,10 +887,10 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
   name                = "${var.name_prefix}-zipline-chronon-eval"
   location            = var.region
   project             = var.project_id
-  deletion_protection = false
 
   ingress = var.zipline_eval_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
 
+  invoker_iam_disabled = var.zipline_eval_domain != "" && (var.zipline_auth_enabled || length(var.allowed_ip_ranges) > 0)
   template {
     vpc_access {
       network_interfaces {
