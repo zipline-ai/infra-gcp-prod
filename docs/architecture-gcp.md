@@ -69,8 +69,6 @@ flowchart TB
   end
 
   lb --> nginx
-  %% keep the managed-services subgraph stacked below the cluster
-  GKE ~~~ gcp
   nginx --> ui --> hub
   hub -->|submit jobs| gw
   gw -->|creates CRDs| ops
@@ -84,7 +82,7 @@ flowchart TB
   ar -. reads upstream token .-> sm
 
   %% compute data flows
-  bq -->|raw source data| spark
+  spark -. reads raw source data .-> bq
   spark -->|produced datasets| gcs
   spark -. registers .-> grav
   grav -. catalogs .-> gcs
