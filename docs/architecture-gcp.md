@@ -25,6 +25,8 @@ A Zipline deployment on GCP organizes into a few functional layers, all running 
 
 How the components are organized and what each connects to.
 
+> Editable Excalidraw source: [`diagrams/architecture-gcp-system-layout.excalidraw`](diagrams/architecture-gcp-system-layout.excalidraw)
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'linear', 'nodeSpacing': 26, 'rankSpacing': 40}}}%%
 flowchart TB
@@ -99,6 +101,8 @@ flowchart TB
 ## Control flow
 
 How a feature pipeline runs and how features are served.
+
+> Editable Excalidraw source: [`diagrams/architecture-gcp-control-flow.excalidraw`](diagrams/architecture-gcp-control-flow.excalidraw)
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'linear', 'nodeSpacing': 30, 'rankSpacing': 45}}}%%
