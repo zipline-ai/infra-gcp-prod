@@ -13,49 +13,6 @@ authorize can reach the UI.
 
 ## Diagram
 
-```
-                              Your users
-                                  │
-                       Identity-Aware Proxy (SSO)
-                                  │
-                          HTTPS Load Balancer
-                                  │
-╔═════════════════════════════════╪══════════════ YOUR GCP PROJECT  (your VPC) ═══════════════╗
-║                                  ▼                                                           ║
-║  ┌──────────────────────── GKE cluster — the Zipline platform ───────────────────────────┐  ║
-║  │  namespace: zipline-system   (control plane & tooling)                                 │  ║
-║  │  ┌────────┐    ┌───────────────┐    ┌────────────────────────┐                         │  ║
-║  │  │   UI   │───▶│ Orchestration │───▶│    Crucible Gateway     │                         │  ║
-║  │  └────────┘    │     Hub       │    │  submits & monitors jobs│                         │  ║
-║  │                └───────┬───────┘    └────────────┬───────────┘                         │  ║
-║  │  ┌───────────────┐     │                         │ creates                             │  ║
-║  │  │ Spark History │     │             ┌───────────▼───────────┐                          │  ║
-║  │  │ Server        │     │             │ Spark & Flink Operators│                         │  ║
-║  │  │ Loki+promtail │     │             └───────────┬───────────┘                          │  ║
-║  │  │ Eval          │     │                         │ launches                            │  ║
-║  │  └───────────────┘     │   namespace: zipline-default (compute)                        │  ║
-║  │                        │   ┌─────────────────────▼──────────────────────┐             │  ║
-║  │                        │   │  Spark jobs (batch)  ·  Flink jobs (stream) │             │  ║
-║  │                        │   └──────────────────┬──────────────────────────┘            │  ║
-║  └────────────────────────┼──────────────────────┼────────────────┬──────────────────────┘  ║
-║         reads DB creds ┌───┘   stores metadata    │ read/write data │ pull container images    ║
-║                        ▼          │               ▼                 ▼                          ║
-║  ┌──────────────┐  ┌───────────┐  │  ┌──────────────────────────────────────┐  ┌────────────┐ ║
-║  │   Secret     │◀─┤  Cloud    │◀─┘  │ Cloud   │ BigQuery│ Bigtable│ Pub/Sub │  │  Artifact  │ ║
-║  │   Manager    │  │   SQL     │     │ Storage │ offline │ online  │ feature │  │  Registry  │ ║
-║  │  credentials │  │ platform  │     │ data/   │ store   │ serving │ logging │  │ container  │ ║
-║  └──────▲───────┘  │ metadata  │     │ logs/   │         │         │  → BQ   │  │  images    │ ║
-║         │          └───────────┘     │ ckpts   │         │         │         │  └─────┬──────┘ ║
-║         │ upstream Docker Hub token  └──────────────────────────────────────┘        │        ║
-║         └─────────────────────────────────────────────────────────────────────────────┘        ║
-║                                              (Artifact Registry pulls upstream images using     ║
-║                                               a token stored in Secret Manager)                 ║
-║                                                                                              ║
-║  Networking: private VPC + subnet · Cloud NAT (egress only) · Private Services Access        ║
-║             (private Cloud SQL / Bigtable) · Workload Identity (no static service-account keys)║
-╚══════════════════════════════════════════════════════════════════════════════════════════════╝
-```
-
 ```mermaid
 flowchart TB
   users([Your users])
