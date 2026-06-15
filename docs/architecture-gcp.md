@@ -44,7 +44,7 @@ flowchart TB
         nginx[nginx proxy]
         ui[Zipline UI]
         hub[Orchestration Hub<br/>schedules, submits & monitors jobs]
-        eval[Eval service]
+        eval[Eval service<br/>dev server for interactive testing]
         shs[Spark History Server<br/>job history & logs]
         logs[Loki + promtail<br/>log collection]
         ops[Spark & Flink operators]
@@ -118,8 +118,8 @@ shared **control-plane** namespace (`zipline-system`) plus one **compute namespa
 |---|---|
 | **Zipline UI** | The web interface your team uses to define and monitor features. |
 | **Orchestration Hub** | Schedules feature pipelines, submits and monitors Spark/Flink jobs, proxies the Spark/Flink/History UIs, tracks job history, and drives the UI. |
+| **Eval** | Dev server for interactive testing — quickly validate a job's semantics as you author it. |
 | **Spark History Server** | Post-run Spark UI — inspect completed jobs, stages, and logs. |
-| **Eval** | Validates job semantics in seconds, with no compute usage (metadata only). |
 | **Loki + promtail** | Collects and stores job and platform logs inside the cluster. |
 | **Spark & Flink operators** | Turn job submissions into running Spark/Flink pods. |
 | **Gravitino** | Zipline's warehouse catalog — registers Zipline-produced Iceberg datasets stored on Cloud Storage. |
