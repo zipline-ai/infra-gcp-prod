@@ -102,35 +102,12 @@ The UI and Hub sit behind a single **nginx proxy**, so there's one entry point f
 Compute scales elastically — you don't size clusters or pick machine types. Jobs scale up on
 demand and release nodes when idle, using spot/preemptible capacity where appropriate.
 
-## Multi-team isolation & resource governance
+## Multi-team isolation
 
-Each Zipline **team** (declared in `teams.py`) runs its compute in its **own namespace**, which
-is the team's isolation boundary. The install starts with a single default compute namespace,
-**`zipline-default`**; as more teams are defined, additional per-team namespaces
-(**`zipline-<team>`**) are added alongside it. Namespaces stay flat — one control-plane namespace
-plus one compute namespace per team.
-
-Each compute namespace carries:
-
-- **A ResourceQuota** — a namespace-level ceiling on CPU/memory for that team. A namespace can
-  hold multiple *scoped* quotas (for example, scoped by PriorityClass) for finer-grained limits
-  without splitting a team across namespaces. See
-  [Kubernetes quota scopes](https://kubernetes.io/docs/concepts/policy/resource-quotas/#quota-scopes).
-- **RBAC rules** — scoping who and what may submit and run in that namespace.
-
-**Node groups split work by team and mode.** GKE node groups (node pools) are labeled by
-**team** and **mode** — `BATCH`, `STREAMING`, `MODEL` — and jobs land on the matching pool via
-those labels. A team's batch and streaming jobs **share one namespace** (so they share its quota
-and RBAC boundary) but can be scheduled onto **different node groups**. Physical resource
-separation by mode therefore comes from node-group labeling, while the namespace provides the
-per-team quota and access boundary.
-
-**Today vs. planned:**
-
-- **Today** — the default compute namespace (`zipline-default`) is created up front via
-  Terraform/Helm.
-- **Planned** — the Hub provisions per-team namespaces **dynamically** from `teams.py`
-  definitions using a CRD pattern, so onboarding a new team won't require a Terraform change.
+Compute namespaces map to your **team-level configurations**: the install starts with
+`zipline-default`, and additional per-team namespaces (`zipline-<team>`) are added as teams are
+defined. Each namespace has its own **resource quotas**, giving every team an isolated compute
+boundary.
 
 ## GCP managed services Zipline uses
 
