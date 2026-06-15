@@ -18,7 +18,7 @@ datasets are written as **Iceberg tables on Cloud Storage** and registered in Zi
 
 | Zipline component | Runs on / uses (GCP) |
 |---|---|
-| Zipline Hub, UI, Eval, compute gateway, warehouse catalog (Gravitino) | GKE — `zipline-system` namespace |
+| Zipline Hub, UI, Eval, warehouse catalog (Gravitino) | GKE — `zipline-system` namespace |
 | Spark (batch) & Flink (streaming) compute | GKE — `zipline-<team>` namespaces |
 | KV Store (online feature serving) | Bigtable |
 | Source warehouse (customer raw business data) | BigQuery |
@@ -43,11 +43,10 @@ flowchart TB
       subgraph sys["namespace: zipline-system — control plane & tooling"]
         nginx[nginx proxy]
         ui[Zipline UI]
-        hub[Orchestration Hub<br/>schedules & tracks jobs]
+        hub[Orchestration Hub<br/>schedules, submits & monitors jobs]
         eval[Eval service]
         shs[Spark History Server<br/>job history & logs]
         logs[Loki + promtail<br/>log collection]
-        gw[Crucible Gateway<br/>submits & monitors jobs]
         ops[Spark & Flink operators]
         grav[Gravitino<br/>warehouse catalog]
       end
@@ -70,8 +69,7 @@ flowchart TB
 
   lb --> nginx
   nginx --> ui --> hub
-  hub -->|submit jobs| gw
-  gw -->|creates CRDs| ops
+  hub -->|creates CRDs| ops
   ops -->|launches| spark
   ops -->|launches| flink
 
@@ -119,8 +117,7 @@ shared **control-plane** namespace (`zipline-system`) plus one **compute namespa
 | Component | What it does |
 |---|---|
 | **Zipline UI** | The web interface your team uses to define and monitor features. |
-| **Orchestration Hub** | Schedules feature pipelines, tracks job history, and drives the UI. |
-| **Crucible Gateway** | Submits and monitors Spark/Flink jobs; proxies the Spark/Flink/History UIs. |
+| **Orchestration Hub** | Schedules feature pipelines, submits and monitors Spark/Flink jobs, proxies the Spark/Flink/History UIs, tracks job history, and drives the UI. |
 | **Spark History Server** | Post-run Spark UI — inspect completed jobs, stages, and logs. |
 | **Eval** | Validates job semantics in seconds, with no compute usage (metadata only). |
 | **Loki + promtail** | Collects and stores job and platform logs inside the cluster. |
