@@ -1,175 +1,171 @@
-# Zipline on GCP — Crucible Architecture
+# Zipline on GCP — What Gets Installed
 
-> **Status: target-state.** As of this writing, `infra-gcp-prod` (origin `main`) still
-> deploys the **Cloud Run + Dataproc** model. This document describes the **crucible**
-> (Kubernetes-native) deployment on **GKE**, mirroring the AWS crucible deployment with
-> GCP-native managed services underneath. The crucible Helm chart already defaults to
-> `cloudProvider: gcp` but has no `values-gke.yaml` overlay yet (only `values-eks.yaml`
-> and `values-aks.yaml`).
+This document describes what the Zipline platform installs into **your own GCP project**.
+Zipline is deployed **BYOC (Bring Your Own Cloud)**: every component below runs inside your
+project and your VPC, and your data never leaves your environment. The platform is two things:
 
-## Overview
+1. A **GKE cluster** that runs the Zipline application and your Spark/Flink compute, and
+2. A set of **GCP managed services** (Cloud Storage, BigQuery, Bigtable, etc.) that Zipline
+   uses for storage, serving, and credentials.
 
-Hub + UI and Spark/Flink compute all run on **GKE**, split across two namespaces:
+Access from your users is fronted by an **Identity-Aware Proxy (IAP)**, so only people you
+authorize can reach the UI.
 
-- **`zipline-system`** — control plane + observability: Hub + UI behind an nginx proxy,
-  Crucible gateway, Spark History Server, Eval, Loki + promtail, and the Spark/Flink
-  operators.
-- **`zipline-default`** — compute: Spark (driver + executors) and Flink
-  (JobManager + TaskManagers) job pods, created as CRDs by the operators.
-
-State is split by lifecycle: K8s owns live job state, Spark History Server owns Spark
-post-mortem UI metadata, Flink owns runtime/checkpoint state, and the **Orchestration
-Hub owns the durable job index in Cloud SQL**. The crucible gateway itself is stateless
-(no gateway database).
-
-## Diagram (ASCII)
+## Diagram
 
 ```
-                        ┌─────────────┐
-   End users ──────────▶│     IAP     │─────▶ HTTPS LB + SSL policy
-   (user_email group)   └─────────────┘              │
-╔════════════════════════════════════════════════════╪═══════════════════════════════════════╗
-║  GKE CLUSTER                                         │                                       ║
-║                                          ┌───────────┴───────────┐                           ║
-║  ┌── namespace: zipline-system ──────────┤   nginx proxy/ingress  ├──────────────────────┐   ║
-║  │                                       └───────────┬───────────┘                       │   ║
-║  │   ┌──────────┐   ┌──────────────┐                 │                                    │   ║
-║  │   │ Zipline  │   │ Orchestration│◀────────────────┘                                    │   ║
-║  │   │   UI     │──▶│     Hub      │──────────┐ submit jobs (REST)                         │   ║
-║  │   └──────────┘   └──────┬───────┘          ▼                                            │   ║
-║  │                         │          ┌────────────────────────────────┐                  │   ║
-║  │   ┌──────────┐          │          │  Crucible Gateway (Go, 2+ rep.) │                  │   ║
-║  │   │   Eval   │          │          │  REST · UI proxy · log stream   │                  │   ║
-║  │   └──────────┘          │          └───┬───────────────┬────────────┘                  │   ║
-║  │   ┌──────────┐  ┌───────┴────────┐     │ K8s API/CRDs  │ svc proxy / pod logs           │   ║
-║  │   │ Spark    │  │ Loki + promtail│     │               │                                │   ║
-║  │   │ History  │  │   (logs)       │     ▼               ▼                                │   ║
-║  │   │ Server   │  └────────────────┘ ┌─────────────┐  (proxies Spark/Flink/SHS UIs)       │   ║
-║  │   └──────────┘                     │ Spark Op.   │                                      │   ║
-║  │                                    │ Flink Op.   │  create CRDs                          │   ║
-║  └────────────────────────────────────┤ (cert-mgr) │──────────────┐                       │   ║
-║                                        └─────────────┘              │                       │   ║
-║  ┌── namespace: zipline-default (compute) ───────────────────────── ▼ ───────────────────┐ │   ║
-║  │   SparkApplication → driver + executors (dynamic allocation)                           │ │   ║
-║  │   FlinkDeployment  → JobManager + TaskManagers (application mode)                       │ │   ║
-║  └────────────────────────────────────────────────────────────────────────────────────── ┘ │   ║
-║                                                                                              │   ║
-║  GKE platform: autoscaler/NAP · Spot pools · NVMe local-SSD shuffle · warm pool             │   ║
-║               · PriorityClasses · ResourceQuota/LimitRange · Workload Identity ─────────────┘   ║
-╚══════════════════════════════════════╪══════════════════════════════════════════════════════════╝
-                                        │  Workload Identity → GCP service accounts
-   ┌──────────┬──────────────┬──────────┴───┬──────────────┬───────────────┬──────────────┐
-   ▼          ▼              ▼              ▼              ▼               ▼              ▼
-┌────────┐┌──────────┐ ┌───────────┐ ┌──────────┐ ┌────────────┐ ┌──────────────┐ ┌──────────┐
-│  GCS   ││ BigQuery │ │ Bigtable  │ │ Pub/Sub  │ │ Cloud SQL  │ │  Artifact    │ │  Secret  │
-│events/ ││ offline  │ │ online    │ │ feature  │ │ Hub        │ │  Registry    │ │ Manager  │
-│ckpts/  ││ store    │ │ serving   │ │ logging  │ │ metadata   │ │ images       │ │          │
-│artifacts│└──────────┘ └───────────┘ │  → BQ    │ └────────────┘ └──────────────┘ └──────────┘
-└────────┘             └──────────┘
-  Networking: VPC + subnet · Cloud Router + Cloud NAT · firewall · Private Services Access · IAP
+                              Your users
+                                  │
+                       Identity-Aware Proxy (SSO)
+                                  │
+                          HTTPS Load Balancer
+                                  │
+╔═════════════════════════════════╪══════════════ YOUR GCP PROJECT  (your VPC) ═══════════════╗
+║                                  ▼                                                           ║
+║  ┌──────────────────────── GKE cluster — the Zipline platform ───────────────────────────┐  ║
+║  │  namespace: zipline-system   (control plane & tooling)                                 │  ║
+║  │  ┌────────┐    ┌───────────────┐    ┌────────────────────────┐                         │  ║
+║  │  │   UI   │───▶│ Orchestration │───▶│    Crucible Gateway     │                         │  ║
+║  │  └────────┘    │     Hub       │    │  submits & monitors jobs│                         │  ║
+║  │                └───────┬───────┘    └────────────┬───────────┘                         │  ║
+║  │  ┌───────────────┐     │                         │ creates                             │  ║
+║  │  │ Spark History │     │             ┌───────────▼───────────┐                          │  ║
+║  │  │ Server        │     │             │ Spark & Flink Operators│                         │  ║
+║  │  │ Loki+promtail │     │             └───────────┬───────────┘                          │  ║
+║  │  │ Eval          │     │                         │ launches                            │  ║
+║  │  └───────────────┘     │   namespace: zipline-default (compute)                        │  ║
+║  │                        │   ┌─────────────────────▼──────────────────────┐             │  ║
+║  │                        │   │  Spark jobs (batch)  ·  Flink jobs (stream) │             │  ║
+║  │                        │   └──────────────────┬──────────────────────────┘            │  ║
+║  └────────────────────────┼──────────────────────┼────────────────┬──────────────────────┘  ║
+║         reads DB creds ┌───┘   stores metadata    │ read/write data │ pull container images    ║
+║                        ▼          │               ▼                 ▼                          ║
+║  ┌──────────────┐  ┌───────────┐  │  ┌──────────────────────────────────────┐  ┌────────────┐ ║
+║  │   Secret     │◀─┤  Cloud    │◀─┘  │ Cloud   │ BigQuery│ Bigtable│ Pub/Sub │  │  Artifact  │ ║
+║  │   Manager    │  │   SQL     │     │ Storage │ offline │ online  │ feature │  │  Registry  │ ║
+║  │  credentials │  │ platform  │     │ data/   │ store   │ serving │ logging │  │ container  │ ║
+║  └──────▲───────┘  │ metadata  │     │ logs/   │         │         │  → BQ   │  │  images    │ ║
+║         │          └───────────┘     │ ckpts   │         │         │         │  └─────┬──────┘ ║
+║         │ upstream Docker Hub token  └──────────────────────────────────────┘        │        ║
+║         └─────────────────────────────────────────────────────────────────────────────┘        ║
+║                                              (Artifact Registry pulls upstream images using     ║
+║                                               a token stored in Secret Manager)                 ║
+║                                                                                              ║
+║  Networking: private VPC + subnet · Cloud NAT (egress only) · Private Services Access        ║
+║             (private Cloud SQL / Bigtable) · Workload Identity (no static service-account keys)║
+╚══════════════════════════════════════════════════════════════════════════════════════════════╝
 ```
-
-## Diagram (Mermaid)
 
 ```mermaid
 flowchart TB
-  users([End users])
-  iap[IAP]
-  lb[HTTPS LB + SSL policy]
+  users([Your users])
+  iap[Identity-Aware Proxy<br/>SSO / access control]
+  lb[HTTPS Load Balancer]
   users --> iap --> lb
 
-  subgraph GKE["GKE cluster"]
-    subgraph sys["namespace: zipline-system"]
-      nginx[nginx proxy / ingress]
-      ui[Zipline UI]
-      hub[Orchestration Hub]
-      eval[Eval]
-      shs[Spark History Server]
-      logs[Loki + promtail]
-      gw[Crucible Gateway<br/>Go · 2+ replicas<br/>REST · UI proxy · logs]
-      ops[Spark Operator<br/>Flink Operator<br/>cert-manager]
-      nginx --> ui --> hub
-      nginx --> hub
-      hub -->|submit REST| gw
-      gw -->|K8s API / CRDs| ops
-      gw -.proxies UIs.-> shs
+  subgraph project["YOUR GCP PROJECT — your VPC"]
+    subgraph GKE["GKE cluster — the Zipline platform"]
+      subgraph sys["namespace: zipline-system — control plane & tooling"]
+        nginx[nginx proxy]
+        ui[Zipline UI]
+        hub[Orchestration Hub<br/>schedules & tracks jobs]
+        eval[Eval service]
+        shs[Spark History Server<br/>job history & logs]
+        logs[Loki + promtail<br/>log collection]
+        gw[Crucible Gateway<br/>submits & monitors jobs]
+        ops[Spark & Flink operators]
+      end
+      subgraph compute["namespace: zipline-default — compute jobs"]
+        spark[Spark jobs<br/>batch feature compute]
+        flink[Flink jobs<br/>streaming feature compute]
+      end
     end
-    subgraph compute["namespace: zipline-default"]
-      spark[SparkApplication<br/>driver + executors]
-      flink[FlinkDeployment<br/>JobManager + TaskManagers]
-    end
-    ops -->|create CRDs| spark
-    ops -->|create CRDs| flink
-    plat["GKE platform: autoscaler/NAP · Spot pools · NVMe local-SSD<br/>warm pool · PriorityClasses · ResourceQuota · Workload Identity"]
-  end
-  lb --> nginx
 
-  subgraph gcp["GCP-native managed services"]
-    gcs[(GCS<br/>events/ckpts/artifacts)]
-    bq[(BigQuery<br/>offline store)]
-    bt[(Bigtable<br/>online serving)]
-    ps[(Pub/Sub → BQ<br/>feature logging)]
-    sql[(Cloud SQL<br/>Hub metadata)]
-    ar[(Artifact Registry)]
-    sm[(Secret Manager)]
+    subgraph gcp["GCP managed services — in your project"]
+      gcs[(Cloud Storage<br/>data · logs · checkpoints)]
+      bq[(BigQuery<br/>offline feature store)]
+      bt[(Bigtable<br/>online feature serving)]
+      ps[(Pub/Sub<br/>feature logging)]
+      sql[(Cloud SQL<br/>platform metadata)]
+      ar[(Artifact Registry<br/>container images)]
+      sm[(Secret Manager<br/>credentials)]
+    end
   end
-  hub --> sql
-  GKE -->|Workload Identity| gcp
+
+  lb --> nginx
+  nginx --> ui --> hub
+  hub -->|submit jobs| gw
+  gw -->|creates CRDs| ops
+  ops -->|launches| spark
+  ops -->|launches| flink
+
+  %% platform data & credentials
+  hub -->|stores metadata| sql
+  hub -->|reads DB credentials| sm
+  GKE -. pull container images .-> ar
+  ar -. reads upstream token .-> sm
+
+  %% compute data flows
   spark --> gcs
   spark --> bq
   spark --> bt
   flink --> gcs
   flink --> bt
+  ps --> bq
 ```
 
-## Component inventory
+## What runs in the GKE cluster
 
-### A. GKE in-cluster workloads
+The Zipline application and all compute run as Kubernetes workloads, split into two namespaces.
 
-| Plane | Component | K8s form | Source |
-|---|---|---|---|
-| Orchestration (`zipline-system`) | Zipline UI, Orchestration Hub, Eval | Deployments + Services behind nginx ingress | orchestration chart (port from AWS `zipline-orchestration`) |
-| Gateway (`zipline-system`) | Crucible Gateway (Go, stateless, 2+ replicas) | Deployment + Service + Ingress | `crucible` chart |
-| Compute operators (`zipline-system`) | Kubeflow Spark Operator (Spark 4.1), Apache Flink K8s Operator (Flink 2.x), KubeRay Operator (optional) | Helm sub-charts | `crucible` Chart.yaml deps |
-| Compute jobs (`zipline-default`) | SparkApplication (driver + executors, dynamic allocation), FlinkDeployment (JM + TM, application mode), RayJob (optional) | CRDs → pods | gateway-created |
-| Job UIs (`zipline-system`) | Spark History Server, Ray History Server (optional) | Deployment + PVC + Service + Ingress | `crucible` chart |
-| Observability (`zipline-system`) | Loki + promtail, VictoriaMetrics, cert-manager (Flink prereq) | Deployments/DaemonSet | `crucible` chart |
+### `zipline-system` — control plane & tooling
 
-### B. GKE platform primitives
-
-Cluster autoscaler / Node Auto-Provisioning · Spot node pools (`cloud.google.com/gke-spot`) ·
-NVMe local-SSD shuffle (nvme-daemonset: discover/format/mount/taint) · warm pool (sub-20s
-driver startup) · PriorityClasses (`crucible-system` 1000 / `crucible-driver` 100 /
-`crucible-pause`) · ResourceQuota + LimitRange · image-prepull daemonset · Workload Identity.
-
-### C. GCP-native managed services (BYOC, outside the cluster)
-
-| Service | Role |
+| Component | What it does |
 |---|---|
-| GCS | object store — Spark event logs (`gs://…/spark-events`), Flink checkpoints/savepoints, Ray logs, artifacts |
-| BigQuery | offline store / warehouse (+ reservation), `loggable_response` sink |
-| Bigtable | online KV feature serving (groupby batch/streaming, tile summaries, chronon_metadata, DQ metrics) |
-| Pub/Sub | online feature-response logging → BigQuery subscription |
-| Cloud SQL | Orchestration Hub durable metadata / job index |
-| Artifact Registry | gateway + Spark images (`us-docker.pkg.dev/crucible-io/…`); customer mirror |
-| Secret Manager | DB password, docker token |
-| Cloud Monitoring / Logging | uptime checks + alerts (or in-cluster VictoriaMetrics/Loki) |
+| **Zipline UI** | The web interface your team uses to define and monitor features. |
+| **Orchestration Hub** | Schedules feature pipelines, tracks job history, and drives the UI. |
+| **Crucible Gateway** | Submits and monitors Spark/Flink jobs; proxies the Spark/Flink/History UIs. |
+| **Spark History Server** | Post-run Spark UI — inspect completed jobs, stages, and logs. |
+| **Eval** | Runs feature evaluation / validation workloads. |
+| **Loki + promtail** | Collects and stores job and platform logs inside the cluster. |
+| **Spark & Flink operators** | Turn job submissions into running Spark/Flink pods. |
 
-### D. Networking & identity
+The UI and Hub sit behind a single **nginx proxy**, so there's one entry point for the platform.
 
-VPC + subnet · Cloud Router + Cloud NAT · firewall rules · Private Services Access
-(private Cloud SQL / Bigtable) · IAP (UI auth) · HTTPS LB + SSL policy · GCP service
-accounts via Workload Identity (gateway SA; Spark/job SA for bucket + event-log +
-checkpoint access; orchestration SA; eval SA).
+### `zipline-default` — compute
 
-## Notes
+| Component | What it does |
+|---|---|
+| **Spark jobs** | Batch feature computation (driver + autoscaling executors). |
+| **Flink jobs** | Streaming feature computation (JobManager + TaskManagers). |
 
-- **Operator placement.** Spark/Flink operators run in `zipline-system` and manage CRDs in
-  `zipline-default` — matching the crucible chart's `crucible-system` → `crucible-jobs`
-  split (renamed for Zipline).
-- **Gateway vs. Hub boundary.** The Hub owns the durable job index (Cloud SQL); the gateway
-  is stateless, translates submissions into CRDs, and proxies the Spark/Flink/SHS UIs. The
-  UI links the Hub renders point at gateway-proxied paths (see the `/spark-history` prefix
-  handling in `infra-aws-prod` PR #75).
-- **Optional pieces** in the chart, omitted from the diagram for clarity: KubeRay operator +
-  Ray History Server (training), VictoriaMetrics (metrics), image-prepull daemonset.
+Compute scales elastically — you don't size clusters or pick machine types. Jobs scale up on
+demand and release nodes when idle, using spot/preemptible capacity where appropriate.
+
+## GCP managed services Zipline uses
+
+All of these live in **your** project. Zipline accesses them using **Workload Identity** — pods
+are granted access through GCP service accounts, so there are **no static keys** to manage.
+
+| Service | What Zipline uses it for |
+|---|---|
+| **Cloud Storage (GCS)** | Stores your data, Spark event logs, Flink checkpoints, and artifacts. |
+| **BigQuery** | Offline feature store / warehouse, and the destination for logged features. |
+| **Bigtable** | Low-latency online store for serving features to your applications. |
+| **Pub/Sub** | Streams logged feature-serving responses into BigQuery. |
+| **Cloud SQL** | Stores platform metadata (the Hub's job index). The Hub reads its DB credentials from Secret Manager. |
+| **Artifact Registry** | Hosts the platform's container images. Mirrors upstream images using a token stored in Secret Manager. |
+| **Secret Manager** | Holds credentials — the Cloud SQL password and the image-mirror token. |
+
+## Network & security
+
+- **Everything runs in your VPC.** The platform deploys into your GCP project on a private
+  VPC and subnet. Your data stays in your project.
+- **Private connectivity.** Cloud SQL and Bigtable are reached over **Private Services Access**
+  (private IPs), not the public internet.
+- **Egress only.** Outbound traffic (e.g., pulling container images) goes through **Cloud NAT**;
+  there are no public ingress paths to your data services.
+- **Authenticated access.** Your users reach the UI through an **Identity-Aware Proxy**, so
+  access is gated by your Google identity / group membership.
+- **No static keys.** In-cluster workloads authenticate to GCP services via **Workload
+  Identity**, eliminating long-lived service-account keys.
