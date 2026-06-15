@@ -69,6 +69,8 @@ flowchart TB
   end
 
   lb --> nginx
+  %% keep the managed-services subgraph stacked below the cluster
+  GKE ~~~ gcp
   nginx --> ui --> hub
   hub -->|submit jobs| gw
   gw -->|creates CRDs| ops
