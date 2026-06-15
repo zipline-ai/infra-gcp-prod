@@ -11,15 +11,18 @@ authorize can reach the Hub UI.
 ## Infrastructure footprint
 
 At a high level, a Zipline deployment on GCP is **Zipline Hub**, **Spark/Flink** compute, a
-**KV Store** for online serving, and an **offline store (Iceberg)** for historical features —
-all running in your GCP project. Concretely, these map to:
+**KV Store** for online serving, and a **warehouse** for feature datasets — all running in your
+GCP project. Source (raw) data is read from your **BigQuery** warehouse; Zipline-produced
+datasets are written as **Iceberg tables on Cloud Storage** and registered in Zipline's own
+**warehouse catalog (Gravitino)**. Concretely, these map to:
 
 | Zipline component | Runs on / uses (GCP) |
 |---|---|
-| Zipline Hub, UI, Eval, compute gateway | GKE — `zipline-system` namespace |
+| Zipline Hub, UI, Eval, compute gateway, warehouse catalog (Gravitino) | GKE — `zipline-system` namespace |
 | Spark (batch) & Flink (streaming) compute | GKE — `zipline-<team>` namespaces |
 | KV Store (online feature serving) | Bigtable |
-| Offline store (Iceberg / historical features) | Cloud Storage + BigQuery |
+| Source warehouse (customer raw business data) | BigQuery |
+| Zipline-produced datasets (Iceberg) | Cloud Storage, cataloged by Gravitino |
 | Platform metadata | Cloud SQL |
 | Feature-logging pipeline | Pub/Sub → BigQuery |
 | Container images | Artifact Registry |
@@ -45,6 +48,7 @@ flowchart TB
         logs[Loki + promtail<br/>log collection]
         gw[Crucible Gateway<br/>submits & monitors jobs]
         ops[Spark & Flink operators]
+        grav[Gravitino<br/>warehouse catalog]
       end
       subgraph compute["namespace: zipline-{team} — compute (one per team; starts with zipline-default)"]
         spark[Spark jobs<br/>batch feature compute]
@@ -53,8 +57,8 @@ flowchart TB
     end
 
     subgraph gcp["GCP managed services — in your project"]
-      gcs[(Cloud Storage<br/>data · logs · checkpoints)]
-      bq[(BigQuery<br/>offline feature store)]
+      gcs[(Cloud Storage<br/>Zipline datasets · Iceberg<br/>logs · checkpoints)]
+      bq[(BigQuery<br/>source warehouse · raw data)]
       bt[(Bigtable<br/>online feature serving)]
       ps[(Pub/Sub<br/>feature logging)]
       sql[(Cloud SQL<br/>platform metadata)]
@@ -77,12 +81,14 @@ flowchart TB
   ar -. reads upstream token .-> sm
 
   %% compute data flows
-  spark --> gcs
-  spark --> bq
+  bq -->|raw source data| spark
+  spark -->|produced datasets| gcs
+  spark -. registers .-> grav
+  grav -. catalogs .-> gcs
   spark --> bt
   flink --> gcs
   flink --> bt
-  ps --> bq
+  ps -->|served-feature logs| bq
 ```
 
 **Notes on Zipline GCP deployment:**
@@ -91,6 +97,9 @@ flowchart TB
   your GCP project on a private VPC; your data stays in your environment.
 - **Hub + UI and Spark/Flink compute all run on GKE**, split into a shared control-plane
   namespace (`zipline-system`) and one compute namespace per team (`zipline-<team>`).
+- **Data flow:** Spark reads your raw source data from **BigQuery**; Zipline-produced datasets
+  are written as **Iceberg tables on Cloud Storage** and registered in Zipline's own warehouse
+  catalog (**Gravitino**); features for online serving are written to **Bigtable**.
 - **Zipline → Chronon communication:** the Hub submits scripts to the Chronon engine using the
   open-source API to run batch and streaming jobs.
 - **Jobs are triggered in one of two ways:** ad-hoc submission from a user's laptop via the
@@ -115,6 +124,7 @@ shared **control-plane** namespace (`zipline-system`) plus one **compute namespa
 | **Eval** | Validates job semantics in seconds, with no compute usage (metadata only). |
 | **Loki + promtail** | Collects and stores job and platform logs inside the cluster. |
 | **Spark & Flink operators** | Turn job submissions into running Spark/Flink pods. |
+| **Gravitino** | Zipline's warehouse catalog — registers Zipline-produced Iceberg datasets stored on Cloud Storage. |
 
 The UI and Hub sit behind a single **nginx proxy**, so there's one entry point for the platform.
 
@@ -142,8 +152,8 @@ are granted access through GCP service accounts, so there are **no static keys**
 
 | Service | What Zipline uses it for |
 |---|---|
-| **Cloud Storage (GCS)** | Stores your data, Spark event logs, Flink checkpoints, and artifacts. |
-| **BigQuery** | Offline feature store / warehouse, and the destination for logged features. |
+| **Cloud Storage (GCS)** | Stores Zipline-produced datasets (Iceberg tables, cataloged by Gravitino), plus Spark event logs, Flink checkpoints, and artifacts. |
+| **BigQuery** | Your **source warehouse** — Spark reads the customer's native raw business data from here. Also the destination for logged features. |
 | **Bigtable** | Low-latency online store (KV Store) for serving features to your applications. |
 | **Pub/Sub** | Streams logged feature-serving responses into BigQuery. |
 | **Cloud SQL** | Stores platform metadata (the Hub's job index). The Hub reads its DB credentials from Secret Manager. |
