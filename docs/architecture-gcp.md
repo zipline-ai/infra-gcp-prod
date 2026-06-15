@@ -83,8 +83,7 @@ flowchart TB
   %% compute data flows
   spark -. reads raw source data .-> bq
   spark -->|produced datasets| gcs
-  spark -. registers .-> grav
-  grav -. catalogs .-> gcs
+  grav -. catalogs produced datasets .-> gcs
   spark --> bt
   flink --> gcs
   flink --> bt
