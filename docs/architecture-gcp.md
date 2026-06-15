@@ -31,6 +31,7 @@ datasets are written as **Iceberg tables on Cloud Storage** and registered in Zi
 ## Deployment
 
 ```mermaid
+%%{init: {'flowchart': {'curve': 'linear', 'nodeSpacing': 28, 'rankSpacing': 38, 'padding': 6}}}%%
 flowchart TB
   users([Your users])
   iap[Identity-Aware Proxy<br/>SSO / access control]
