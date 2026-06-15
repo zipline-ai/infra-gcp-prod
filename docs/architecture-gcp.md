@@ -69,6 +69,7 @@ flowchart TB
 
   lb --> nginx
   nginx --> ui --> hub
+  hub -.- eval
   hub -->|creates CRDs| ops
   ops -->|launches| spark
   ops -->|launches| flink
