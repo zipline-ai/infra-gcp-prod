@@ -10,6 +10,7 @@ module "base_setup" {
   zone                        = var.bigtable_zone
   artifact_prefix             = var.artifact_prefix
   zipline_version             = var.zipline_version
+  zipline_custom_domain       = var.zipline_custom_domain
   hub_domain                  = var.hub_domain
   zipline_ui_domain           = var.zipline_ui_domain
   zipline_eval_domain         = var.zipline_eval_domain

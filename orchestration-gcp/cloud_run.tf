@@ -47,6 +47,24 @@ resource "google_artifact_registry_repository" "docker_hub_remote_repository" {
   ]
 }
 
+locals {
+  use_zipline_custom_domain = var.zipline_custom_domain != ""
+
+  default_hub_url     = "https://${var.name_prefix}-zipline-orchestration-${var.project_number}.${var.region}.run.app"
+  default_ui_url      = "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
+  default_eval_url    = "https://${var.name_prefix}-zipline-chronon-eval-${var.project_number}.${var.region}.run.app"
+  default_fetcher_url = "https://${var.name_prefix}-zipline-chronon-fetcher-${var.project_number}.${var.region}.run.app"
+
+  hub_url     = local.use_zipline_custom_domain ? "https://${var.zipline_custom_domain}/services/hub" : var.hub_domain != "" ? "https://${var.hub_domain}" : local.default_hub_url
+  ui_url      = local.use_zipline_custom_domain ? "https://${var.zipline_custom_domain}" : var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : local.default_ui_url
+  eval_url    = local.use_zipline_custom_domain ? "https://${var.zipline_custom_domain}/services/eval" : var.zipline_eval_domain != "" ? "https://${var.zipline_eval_domain}" : local.default_eval_url
+  fetcher_url = local.use_zipline_custom_domain ? "https://${var.zipline_custom_domain}/services/fetcher" : local.default_fetcher_url
+
+  hub_custom_domain_enabled  = local.use_zipline_custom_domain || var.hub_domain != ""
+  ui_custom_domain_enabled   = local.use_zipline_custom_domain || var.zipline_ui_domain != ""
+  eval_custom_domain_enabled = local.use_zipline_custom_domain || var.zipline_eval_domain != ""
+}
+
 resource "google_secret_manager_secret" "docker_token" {
   secret_id = "${var.name_prefix}-zipline-docker-token"
   replication {
@@ -237,9 +255,9 @@ resource "google_cloud_run_v2_service" "orchestration" {
   location = var.region
 
   custom_audiences = [
-    var.hub_domain != "" ? "https://${var.hub_domain}" : "https://${var.name_prefix}-zipline-orchestration-${var.project_number}.${var.region}.run.app"
+    local.hub_url
   ]
-  ingress              = var.hub_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+  ingress              = local.hub_custom_domain_enabled ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
   invoker_iam_disabled = var.zipline_auth_enabled
 
   template {
@@ -330,7 +348,7 @@ resource "google_cloud_run_v2_service" "orchestration" {
       }
       env {
         name  = "HUB_FRONTEND_URL"
-        value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
+        value = local.ui_url
       }
       # Zipline Authentication
       env {
@@ -341,7 +359,7 @@ resource "google_cloud_run_v2_service" "orchestration" {
         for_each = var.zipline_auth_enabled ? [1] : []
         content {
           name  = "AUTH_JWKS_URL"
-          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/jwks" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app/api/auth/jwks"
+          value = "${local.ui_url}/api/auth/jwks"
         }
       }
 
@@ -484,10 +502,10 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
   project  = var.project_id
   location = var.region
 
-  ingress              = var.zipline_ui_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+  ingress              = local.ui_custom_domain_enabled ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
   invoker_iam_disabled = var.zipline_auth_enabled
   custom_audiences = [
-    var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
+    local.ui_url
   ]
   template {
     vpc_access {
@@ -534,7 +552,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         for_each = var.deploy_fetcher ? [1] : []
         content {
           name  = "FETCHER_BASE_URL"
-          value = google_cloud_run_v2_service.chronon_fetcher[0].uri
+          value = local.use_zipline_custom_domain ? local.fetcher_url : google_cloud_run_v2_service.chronon_fetcher[0].uri
         }
       }
       env {
@@ -573,14 +591,14 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         for_each = var.zipline_auth_enabled ? [1] : []
         content {
           name  = "AUTH_URL"
-          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
+          value = local.ui_url
         }
       }
       dynamic "env" {
         for_each = var.zipline_auth_enabled ? [1] : []
         content {
           name  = "AUTH_ALLOWED_HOSTS"
-          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain},${var.zipline_ui_domain},${google_compute_global_address.zipline_ui_address[0].address}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app,${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
+          value = local.ui_custom_domain_enabled ? "${local.ui_url},${local.use_zipline_custom_domain ? var.zipline_custom_domain : var.zipline_ui_domain},${local.use_zipline_custom_domain ? google_compute_global_address.zipline_custom_domain_address[0].address : google_compute_global_address.zipline_ui_address[0].address}" : "${local.default_ui_url},${trimprefix(local.default_ui_url, "https://")}"
         }
       }
       dynamic "env" {
@@ -764,7 +782,7 @@ resource "google_cloud_run_v2_service_iam_member" "ui_users_access" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "ui_iap_access" {
-  count    = !(var.zipline_auth_enabled || var.disable_iap) && var.zipline_ui_domain != "" ? 1 : 0
+  count    = !(var.zipline_auth_enabled || var.disable_iap) && local.ui_custom_domain_enabled ? 1 : 0
   name     = google_cloud_run_v2_service.zipline_ui.name
   location = google_cloud_run_v2_service.zipline_ui.location
   role     = "roles/run.invoker"
@@ -772,9 +790,9 @@ resource "google_cloud_run_v2_service_iam_member" "ui_iap_access" {
 }
 
 resource "google_iap_web_backend_service_iam_member" "ui_iap_users_access" {
-  count               = !(var.zipline_auth_enabled || var.disable_iap) && var.users_email != "" && var.zipline_ui_domain != "" ? 1 : 0
+  count               = !(var.zipline_auth_enabled || var.disable_iap) && var.users_email != "" && local.ui_custom_domain_enabled ? 1 : 0
   project             = var.project_id
-  web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
+  web_backend_service = local.use_zipline_custom_domain ? google_compute_backend_service.zipline_custom_domain_ui_backend_service[0].name : google_compute_backend_service.zipline_ui_backend_service[0].name
   role                = "roles/iap.httpsResourceAccessor"
   member              = "group:${var.users_email}"
 
@@ -785,17 +803,17 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_users_access" {
 }
 
 resource "google_iap_web_backend_service_iam_member" "ui_iap_personnel_access" {
-  count               = !(var.zipline_auth_enabled || var.disable_iap) && var.zipline_ui_domain != "" ? 1 : 0
+  count               = !(var.zipline_auth_enabled || var.disable_iap) && local.ui_custom_domain_enabled ? 1 : 0
   project             = var.project_id
-  web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
+  web_backend_service = local.use_zipline_custom_domain ? google_compute_backend_service.zipline_custom_domain_ui_backend_service[0].name : google_compute_backend_service.zipline_ui_backend_service[0].name
   role                = "roles/iap.httpsResourceAccessor"
   member              = "group:${var.personnel_email}"
 }
 
 resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
-  count               = var.allow_public_access && var.disable_iap && var.zipline_ui_domain != "" ? 1 : 0
+  count               = var.allow_public_access && var.disable_iap && local.ui_custom_domain_enabled ? 1 : 0
   project             = var.project_id
-  web_backend_service = google_compute_backend_service.zipline_ui_backend_service[0].name
+  web_backend_service = local.use_zipline_custom_domain ? google_compute_backend_service.zipline_custom_domain_ui_backend_service[0].name : google_compute_backend_service.zipline_ui_backend_service[0].name
   role                = "roles/iap.httpsResourceAccessor"
   member              = "allUsers"
 }
@@ -916,12 +934,12 @@ resource "google_secret_manager_secret_version" "sso_client_secret" {
 # Cloud Run v2 service for Chronon Eval
 
 resource "google_cloud_run_v2_service" "chronon_eval" {
-  name                = "${var.name_prefix}-zipline-chronon-eval"
-  location            = var.region
-  project             = var.project_id
+  name     = "${var.name_prefix}-zipline-chronon-eval"
+  location = var.region
+  project  = var.project_id
 
-  ingress              = var.zipline_eval_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
-  invoker_iam_disabled = var.zipline_auth_enabled || var.zipline_eval_domain != ""
+  ingress              = local.eval_custom_domain_enabled ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+  invoker_iam_disabled = var.zipline_auth_enabled || local.eval_custom_domain_enabled
   template {
     vpc_access {
       network_interfaces {
@@ -986,7 +1004,7 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
         for_each = var.zipline_auth_enabled ? [1] : []
         content {
           name  = "AUTH_JWKS_URL"
-          value = var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/jwks" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app/api/auth/jwks"
+          value = "${local.ui_url}/api/auth/jwks"
         }
       }
 
@@ -1055,7 +1073,8 @@ resource "google_cloud_run_v2_service" "chronon_fetcher" {
   location = var.region
   project  = var.project_id
 
-  invoker_iam_disabled = var.zipline_auth_enabled
+  ingress              = local.use_zipline_custom_domain ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+  invoker_iam_disabled = var.zipline_auth_enabled || local.use_zipline_custom_domain
   template {
 
     vpc_access {
@@ -1291,7 +1310,7 @@ resource "google_compute_security_policy" "restrict_ingress_policy" {
 }
 
 resource "google_compute_region_network_endpoint_group" "orchestration_neg" {
-  count                 = var.hub_domain != "" ? 1 : 0
+  count                 = !local.use_zipline_custom_domain && var.hub_domain != "" ? 1 : 0
   name                  = "${var.name_prefix}-zipline-orch-neg"
   project               = var.project_id
   region                = var.region
@@ -1303,7 +1322,7 @@ resource "google_compute_region_network_endpoint_group" "orchestration_neg" {
 }
 
 resource "google_compute_backend_service" "orchestration_backend_service" {
-  count                 = var.hub_domain != "" ? 1 : 0
+  count                 = !local.use_zipline_custom_domain && var.hub_domain != "" ? 1 : 0
   name                  = "${var.name_prefix}-zipline-orch-backend-service"
   project               = var.project_id
   protocol              = var.use_https ? "HTTPS" : "HTTP"
@@ -1327,7 +1346,7 @@ resource "google_compute_backend_service" "orchestration_backend_service" {
 }
 
 resource "google_compute_url_map" "orchestration_url_map" {
-  count   = var.hub_domain != "" ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.hub_domain != "" ? 1 : 0
   name    = "${var.name_prefix}-zipline-orch-url-map"
   project = var.project_id
 
@@ -1335,7 +1354,7 @@ resource "google_compute_url_map" "orchestration_url_map" {
 }
 
 resource "google_compute_managed_ssl_certificate" "orchestration_ssl_cert" {
-  count   = var.hub_domain != "" && var.use_https ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.hub_domain != "" && var.use_https ? 1 : 0
   name    = "${var.name_prefix}-zipline-orch-ssl-cert"
   project = var.project_id
 
@@ -1345,7 +1364,7 @@ resource "google_compute_managed_ssl_certificate" "orchestration_ssl_cert" {
 }
 
 resource "google_compute_target_https_proxy" "orchestration_https_proxy" {
-  count   = var.hub_domain != "" && var.use_https ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.hub_domain != "" && var.use_https ? 1 : 0
   name    = "${var.name_prefix}-zipline-orch-https-proxy"
   project = var.project_id
 
@@ -1355,7 +1374,7 @@ resource "google_compute_target_https_proxy" "orchestration_https_proxy" {
 }
 
 resource "google_compute_target_http_proxy" "orchestration_http_proxy" {
-  count   = var.hub_domain != "" && !var.use_https ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.hub_domain != "" && !var.use_https ? 1 : 0
   name    = "${var.name_prefix}-zipline-orch-http-proxy"
   project = var.project_id
 
@@ -1363,13 +1382,13 @@ resource "google_compute_target_http_proxy" "orchestration_http_proxy" {
 }
 
 resource "google_compute_global_address" "orchestration_address" {
-  count   = var.hub_domain != "" ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.hub_domain != "" ? 1 : 0
   name    = "${var.name_prefix}-zipline-orch-lb-ip"
   project = var.project_id
 }
 
 resource "google_compute_global_forwarding_rule" "orchestration_forwarding_rule" {
-  count       = var.hub_domain != "" ? 1 : 0
+  count       = !local.use_zipline_custom_domain && var.hub_domain != "" ? 1 : 0
   name        = "${var.name_prefix}-zipline-orch-forwarding-rule"
   project     = var.project_id
   ip_address  = google_compute_global_address.orchestration_address[0].address
@@ -1382,7 +1401,7 @@ resource "google_compute_global_forwarding_rule" "orchestration_forwarding_rule"
 
 
 resource "google_compute_region_network_endpoint_group" "zipline_ui_neg" {
-  count                 = var.zipline_ui_domain != "" ? 1 : 0
+  count                 = !local.use_zipline_custom_domain && var.zipline_ui_domain != "" ? 1 : 0
   name                  = "${var.name_prefix}-zipline-ui-neg"
   project               = var.project_id
   region                = var.region
@@ -1394,7 +1413,7 @@ resource "google_compute_region_network_endpoint_group" "zipline_ui_neg" {
 }
 
 resource "google_compute_backend_service" "zipline_ui_backend_service" {
-  count                 = var.zipline_ui_domain != "" ? 1 : 0
+  count                 = !local.use_zipline_custom_domain && var.zipline_ui_domain != "" ? 1 : 0
   name                  = "${var.name_prefix}-zipline-ui-backend-service"
   project               = var.project_id
   protocol              = "HTTPS"
@@ -1422,7 +1441,7 @@ resource "google_compute_backend_service" "zipline_ui_backend_service" {
 }
 
 resource "google_compute_url_map" "zipline_ui_url_map" {
-  count   = var.zipline_ui_domain != "" ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.zipline_ui_domain != "" ? 1 : 0
   name    = "${var.name_prefix}-zipline-ui-url-map"
   project = var.project_id
 
@@ -1430,7 +1449,7 @@ resource "google_compute_url_map" "zipline_ui_url_map" {
 }
 
 resource "google_compute_managed_ssl_certificate" "zipline_ui_ssl_cert" {
-  count   = var.zipline_ui_domain != "" ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.zipline_ui_domain != "" ? 1 : 0
   name    = "${var.name_prefix}-zipline-ui-ssl-cert"
   project = var.project_id
 
@@ -1440,7 +1459,7 @@ resource "google_compute_managed_ssl_certificate" "zipline_ui_ssl_cert" {
 }
 
 resource "google_compute_target_https_proxy" "zipline_ui_https_proxy" {
-  count   = var.zipline_ui_domain != "" ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.zipline_ui_domain != "" ? 1 : 0
   name    = "${var.name_prefix}-zipline-ui-https-proxy"
   project = var.project_id
 
@@ -1450,13 +1469,13 @@ resource "google_compute_target_https_proxy" "zipline_ui_https_proxy" {
 }
 
 resource "google_compute_global_address" "zipline_ui_address" {
-  count   = var.zipline_ui_domain != "" ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.zipline_ui_domain != "" ? 1 : 0
   name    = "${var.name_prefix}-zipline-ui-lb-ip"
   project = var.project_id
 }
 
 resource "google_compute_global_forwarding_rule" "zipline_ui_forwarding_rule" {
-  count       = var.zipline_ui_domain != "" ? 1 : 0
+  count       = !local.use_zipline_custom_domain && var.zipline_ui_domain != "" ? 1 : 0
   name        = "${var.name_prefix}-zipline-ui-forwarding-rule"
   project     = var.project_id
   ip_address  = google_compute_global_address.zipline_ui_address[0].address
@@ -1468,7 +1487,7 @@ resource "google_compute_global_forwarding_rule" "zipline_ui_forwarding_rule" {
 }
 
 resource "google_compute_region_network_endpoint_group" "zipline_eval_neg" {
-  count                 = var.zipline_eval_domain != "" ? 1 : 0
+  count                 = !local.use_zipline_custom_domain && var.zipline_eval_domain != "" ? 1 : 0
   name                  = "${var.name_prefix}-zipline-eval-neg"
   project               = var.project_id
   region                = var.region
@@ -1480,7 +1499,7 @@ resource "google_compute_region_network_endpoint_group" "zipline_eval_neg" {
 }
 
 resource "google_compute_backend_service" "zipline_eval_backend_service" {
-  count                 = var.zipline_eval_domain != "" ? 1 : 0
+  count                 = !local.use_zipline_custom_domain && var.zipline_eval_domain != "" ? 1 : 0
   name                  = "${var.name_prefix}-zipline-eval-backend-service"
   project               = var.project_id
   protocol              = "HTTPS"
@@ -1508,7 +1527,7 @@ resource "google_compute_backend_service" "zipline_eval_backend_service" {
 }
 
 resource "google_compute_url_map" "zipline_eval_url_map" {
-  count   = var.zipline_eval_domain != "" ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.zipline_eval_domain != "" ? 1 : 0
   name    = "${var.name_prefix}-zipline-eval-url-map"
   project = var.project_id
 
@@ -1516,7 +1535,7 @@ resource "google_compute_url_map" "zipline_eval_url_map" {
 }
 
 resource "google_compute_managed_ssl_certificate" "zipline_eval_ssl_cert" {
-  count   = var.zipline_eval_domain != "" ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.zipline_eval_domain != "" ? 1 : 0
   name    = "${var.name_prefix}-zipline-eval-ssl-cert"
   project = var.project_id
 
@@ -1526,7 +1545,7 @@ resource "google_compute_managed_ssl_certificate" "zipline_eval_ssl_cert" {
 }
 
 resource "google_compute_target_https_proxy" "zipline_eval_https_proxy" {
-  count   = var.zipline_eval_domain != "" ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.zipline_eval_domain != "" ? 1 : 0
   name    = "${var.name_prefix}-zipline-eval-https-proxy"
   project = var.project_id
 
@@ -1536,13 +1555,13 @@ resource "google_compute_target_https_proxy" "zipline_eval_https_proxy" {
 }
 
 resource "google_compute_global_address" "zipline_eval_address" {
-  count   = var.zipline_eval_domain != "" ? 1 : 0
+  count   = !local.use_zipline_custom_domain && var.zipline_eval_domain != "" ? 1 : 0
   name    = "${var.name_prefix}-zipline-eval-lb-ip"
   project = var.project_id
 }
 
 resource "google_compute_global_forwarding_rule" "zipline_eval_forwarding_rule" {
-  count       = var.zipline_eval_domain != "" ? 1 : 0
+  count       = !local.use_zipline_custom_domain && var.zipline_eval_domain != "" ? 1 : 0
   name        = "${var.name_prefix}-zipline-eval-forwarding-rule"
   project     = var.project_id
   ip_address  = google_compute_global_address.zipline_eval_address[0].address
@@ -1551,6 +1570,255 @@ resource "google_compute_global_forwarding_rule" "zipline_eval_forwarding_rule" 
 
   load_balancing_scheme = "EXTERNAL_MANAGED"
   target                = google_compute_target_https_proxy.zipline_eval_https_proxy[0].id
+}
+
+resource "google_compute_region_network_endpoint_group" "zipline_custom_domain_ui_neg" {
+  count                 = local.use_zipline_custom_domain ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-custom-ui-neg"
+  project               = var.project_id
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+
+  cloud_run {
+    service = google_cloud_run_v2_service.zipline_ui.name
+  }
+}
+
+resource "google_compute_region_network_endpoint_group" "zipline_custom_domain_hub_neg" {
+  count                 = local.use_zipline_custom_domain ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-custom-hub-neg"
+  project               = var.project_id
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+
+  cloud_run {
+    service = google_cloud_run_v2_service.orchestration.name
+  }
+}
+
+resource "google_compute_region_network_endpoint_group" "zipline_custom_domain_eval_neg" {
+  count                 = local.use_zipline_custom_domain ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-custom-eval-neg"
+  project               = var.project_id
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+
+  cloud_run {
+    service = google_cloud_run_v2_service.chronon_eval.name
+  }
+}
+
+resource "google_compute_region_network_endpoint_group" "zipline_custom_domain_fetcher_neg" {
+  count                 = local.use_zipline_custom_domain && var.deploy_fetcher ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-custom-fetcher-neg"
+  project               = var.project_id
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+
+  cloud_run {
+    service = google_cloud_run_v2_service.chronon_fetcher[0].name
+  }
+}
+
+resource "google_compute_backend_service" "zipline_custom_domain_ui_backend_service" {
+  count                 = local.use_zipline_custom_domain ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-custom-ui-backend"
+  project               = var.project_id
+  protocol              = "HTTPS"
+  timeout_sec           = 30
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  backend {
+    group = google_compute_region_network_endpoint_group.zipline_custom_domain_ui_neg[0].id
+  }
+
+  iap {
+    enabled = !(var.zipline_auth_enabled || var.disable_iap)
+  }
+
+  security_policy = length(var.allowed_ip_ranges) > 0 ? google_compute_security_policy.restrict_ingress_policy[0].id : null
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+
+  depends_on = [
+    google_cloud_run_v2_service.zipline_ui,
+  ]
+}
+
+resource "google_compute_backend_service" "zipline_custom_domain_hub_backend_service" {
+  count                 = local.use_zipline_custom_domain ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-custom-hub-backend"
+  project               = var.project_id
+  protocol              = "HTTPS"
+  timeout_sec           = 30
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  backend {
+    group = google_compute_region_network_endpoint_group.zipline_custom_domain_hub_neg[0].id
+  }
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+
+  security_policy = length(var.allowed_ip_ranges) > 0 ? google_compute_security_policy.restrict_ingress_policy[0].id : null
+
+  depends_on = [
+    google_cloud_run_v2_service.orchestration,
+  ]
+}
+
+resource "google_compute_backend_service" "zipline_custom_domain_eval_backend_service" {
+  count                 = local.use_zipline_custom_domain ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-custom-eval-backend"
+  project               = var.project_id
+  protocol              = "HTTPS"
+  timeout_sec           = 30
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  backend {
+    group = google_compute_region_network_endpoint_group.zipline_custom_domain_eval_neg[0].id
+  }
+
+  iap {
+    enabled = false
+  }
+
+  security_policy = length(var.allowed_ip_ranges) > 0 ? google_compute_security_policy.restrict_ingress_policy[0].id : null
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+
+  depends_on = [
+    google_cloud_run_v2_service.chronon_eval,
+  ]
+}
+
+resource "google_compute_backend_service" "zipline_custom_domain_fetcher_backend_service" {
+  count                 = local.use_zipline_custom_domain && var.deploy_fetcher ? 1 : 0
+  name                  = "${var.name_prefix}-zipline-custom-fetcher-backend"
+  project               = var.project_id
+  protocol              = "HTTPS"
+  timeout_sec           = 30
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  backend {
+    group = google_compute_region_network_endpoint_group.zipline_custom_domain_fetcher_neg[0].id
+  }
+
+  iap {
+    enabled = false
+  }
+
+  security_policy = length(var.allowed_ip_ranges) > 0 ? google_compute_security_policy.restrict_ingress_policy[0].id : null
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+
+  depends_on = [
+    google_cloud_run_v2_service.chronon_fetcher,
+  ]
+}
+
+resource "google_compute_url_map" "zipline_custom_domain_url_map" {
+  count   = local.use_zipline_custom_domain ? 1 : 0
+  name    = "${var.name_prefix}-zipline-custom-url-map"
+  project = var.project_id
+
+  default_service = google_compute_backend_service.zipline_custom_domain_ui_backend_service[0].id
+
+  host_rule {
+    hosts        = [var.zipline_custom_domain]
+    path_matcher = "zipline-custom-domain"
+  }
+
+  path_matcher {
+    name            = "zipline-custom-domain"
+    default_service = google_compute_backend_service.zipline_custom_domain_ui_backend_service[0].id
+
+    path_rule {
+      paths   = ["/services/hub", "/services/hub/*"]
+      service = google_compute_backend_service.zipline_custom_domain_hub_backend_service[0].id
+
+      route_action {
+        url_rewrite {
+          path_prefix_rewrite = "/"
+        }
+      }
+    }
+
+    path_rule {
+      paths   = ["/services/eval", "/services/eval/*"]
+      service = google_compute_backend_service.zipline_custom_domain_eval_backend_service[0].id
+
+      route_action {
+        url_rewrite {
+          path_prefix_rewrite = "/"
+        }
+      }
+    }
+
+    dynamic "path_rule" {
+      for_each = var.deploy_fetcher ? [1] : []
+
+      content {
+        paths   = ["/services/fetcher", "/services/fetcher/*"]
+        service = google_compute_backend_service.zipline_custom_domain_fetcher_backend_service[0].id
+
+        route_action {
+          url_rewrite {
+            path_prefix_rewrite = "/"
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "zipline_custom_domain_ssl_cert" {
+  count   = local.use_zipline_custom_domain ? 1 : 0
+  name    = "${var.name_prefix}-zipline-custom-ssl-cert"
+  project = var.project_id
+
+  managed {
+    domains = [var.zipline_custom_domain]
+  }
+}
+
+resource "google_compute_target_https_proxy" "zipline_custom_domain_https_proxy" {
+  count   = local.use_zipline_custom_domain ? 1 : 0
+  name    = "${var.name_prefix}-zipline-custom-https-proxy"
+  project = var.project_id
+
+  url_map          = google_compute_url_map.zipline_custom_domain_url_map[0].id
+  ssl_certificates = [google_compute_managed_ssl_certificate.zipline_custom_domain_ssl_cert[0].id]
+  ssl_policy       = google_compute_ssl_policy.ingress_ssl_policy.id
+}
+
+resource "google_compute_global_address" "zipline_custom_domain_address" {
+  count   = local.use_zipline_custom_domain ? 1 : 0
+  name    = "${var.name_prefix}-zipline-custom-lb-ip"
+  project = var.project_id
+}
+
+resource "google_compute_global_forwarding_rule" "zipline_custom_domain_forwarding_rule" {
+  count       = local.use_zipline_custom_domain ? 1 : 0
+  name        = "${var.name_prefix}-zipline-custom-forwarding-rule"
+  project     = var.project_id
+  ip_address  = google_compute_global_address.zipline_custom_domain_address[0].address
+  ip_protocol = "TCP"
+  port_range  = "443"
+
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  target                = google_compute_target_https_proxy.zipline_custom_domain_https_proxy[0].id
 }
 
 
@@ -1569,47 +1837,47 @@ output "orchestration_service_account_id" {
 }
 
 output "eval_service_url" {
-  value       = google_cloud_run_v2_service.chronon_eval.uri
+  value       = local.eval_url
   description = "URL of the Chronon Eval service"
 }
 
 output "hub_address" {
-  value = var.hub_domain != "" ? var.hub_domain : google_cloud_run_v2_service.orchestration.uri
+  value = local.hub_url
 }
 
 output "ui_address" {
-  value = var.zipline_ui_domain != "" ? var.zipline_ui_domain : google_cloud_run_v2_service.zipline_ui.uri
+  value = local.ui_url
 }
 
 output "Google_OAuth_Redirect_URI_Instructions" {
-  value       = var.zipline_auth_enabled && var.google_oauth_client_id != "" ? "In Google Cloud Console, open APIs & Services > Credentials > your OAuth 2.0 Client ID, then add this Authorized redirect URI: ${var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/callback/google" : "${google_cloud_run_v2_service.zipline_ui.uri}/api/auth/callback/google"}" : null
+  value       = var.zipline_auth_enabled && var.google_oauth_client_id != "" ? "In Google Cloud Console, open APIs & Services > Credentials > your OAuth 2.0 Client ID, then add this Authorized redirect URI: ${local.ui_url}/api/auth/callback/google" : null
   description = "Instructions for registering the Google OAuth redirect URI when Google auth is enabled."
 }
 
 output "GitHub_OAuth_Redirect_URI_Instructions" {
-  value       = var.zipline_auth_enabled && var.github_oauth_client_id != "" ? "In GitHub, open Settings > Developer settings > OAuth Apps > your OAuth App, then set this Authorization callback URL: ${var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/callback/github" : "${google_cloud_run_v2_service.zipline_ui.uri}/api/auth/callback/github"}" : null
+  value       = var.zipline_auth_enabled && var.github_oauth_client_id != "" ? "In GitHub, open Settings > Developer settings > OAuth Apps > your OAuth App, then set this Authorization callback URL: ${local.ui_url}/api/auth/callback/github" : null
   description = "Instructions for registering the GitHub OAuth callback URL when GitHub auth is enabled."
 }
 
 output "Microsoft_Entra_OAuth_Redirect_URI_Instructions" {
-  value       = var.zipline_auth_enabled && var.microsoft_entra_oauth_client_id != "" ? "In Azure Portal, open Microsoft Entra ID > App registrations > your app registration > Authentication, then add this Web redirect URI: ${var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}/api/auth/callback/microsoft-entra-id" : "${google_cloud_run_v2_service.zipline_ui.uri}/api/auth/callback/microsoft-entra-id"}" : null
+  value       = var.zipline_auth_enabled && var.microsoft_entra_oauth_client_id != "" ? "In Azure Portal, open Microsoft Entra ID > App registrations > your app registration > Authentication, then add this Web redirect URI: ${local.ui_url}/api/auth/callback/microsoft-entra-id" : null
   description = "Instructions for registering the Microsoft Entra OAuth redirect URI when Microsoft Entra auth is enabled."
 }
 
 output "fetcher_address" {
-  value = var.deploy_fetcher ? google_cloud_run_v2_service.chronon_fetcher[0].uri : ""
+  value = var.deploy_fetcher ? local.fetcher_url : ""
 }
 
 output "UI_DNS_Instructions" {
-  value = var.zipline_ui_domain != "" ? "Create an A record pointing ${var.zipline_ui_domain} to ${google_compute_global_address.zipline_ui_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
+  value = local.use_zipline_custom_domain ? "Create an A record pointing ${var.zipline_custom_domain} to ${google_compute_global_address.zipline_custom_domain_address[0].address}. UI will be available at ${local.ui_url}; hub at ${local.hub_url}; eval at ${local.eval_url}${var.deploy_fetcher ? "; fetcher at ${local.fetcher_url}" : ""}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : var.zipline_ui_domain != "" ? "Create an A record pointing ${var.zipline_ui_domain} to ${google_compute_global_address.zipline_ui_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
 }
 
 output "Hub_DNS_Instructions" {
-  value = var.hub_domain != "" ? "Create an A record pointing ${var.hub_domain} to ${google_compute_global_address.orchestration_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
+  value = local.use_zipline_custom_domain ? "Create an A record pointing ${var.zipline_custom_domain} to ${google_compute_global_address.zipline_custom_domain_address[0].address}. Hub will be available at ${local.hub_url}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : var.hub_domain != "" ? "Create an A record pointing ${var.hub_domain} to ${google_compute_global_address.orchestration_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
 }
 
 output "Eval_DNS_Instructions" {
-  value = var.zipline_eval_domain != "" ? "Create an A record pointing ${var.zipline_eval_domain} to ${google_compute_global_address.zipline_eval_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
+  value = local.use_zipline_custom_domain ? "Create an A record pointing ${var.zipline_custom_domain} to ${google_compute_global_address.zipline_custom_domain_address[0].address}. Eval will be available at ${local.eval_url}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : var.zipline_eval_domain != "" ? "Create an A record pointing ${var.zipline_eval_domain} to ${google_compute_global_address.zipline_eval_address[0].address}. For more details, see https://cloud.google.com/load-balancing/docs/https/setting-up-https-serverless#update_dns" : null
 }
 
 output "eval_service_account_email" {

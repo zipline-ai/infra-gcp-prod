@@ -16,6 +16,15 @@ variable "zipline_version" {}
 
 variable "region" {}
 
+
+# A single custom domain for all services (optional). Either set zipline_custom_domain or the set (zipline_ui_domain, hub_domain, and zipline_eval_domain)
+variable "zipline_custom_domain" {
+  type        = string
+  description = "Custom domain for the entire zipline stack. Either set this or the individual domains for each service."
+  default     = ""
+}
+
+
 variable "hub_domain" {
   description = "Set to provide a URL for the Zipline hub."
   default     = ""
