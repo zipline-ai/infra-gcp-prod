@@ -506,7 +506,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
   location = var.region
 
   ingress              = local.ui_custom_domain_enabled ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
-  invoker_iam_disabled = var.zipline_auth_enabled || var.zipline_ui_domain != ""
+  invoker_iam_disabled = var.zipline_auth_enabled || (local.ui_custom_domain_enabled && length(var.allowed_ip_ranges) > 0)
   custom_audiences = [
     local.ui_url
   ]
@@ -579,7 +579,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         value = google_cloud_run_v2_service.chronon_eval.name
       }
       env {
-        name = "EVAL_URL"
+        name  = "EVAL_URL"
         value = local.eval_url != "" ? local.eval_url : google_cloud_run_v2_service.chronon_eval.uri
       }
       dynamic "env" {
@@ -1081,7 +1081,7 @@ resource "google_cloud_run_v2_service" "chronon_fetcher" {
   project  = var.project_id
 
   ingress              = local.use_zipline_custom_domain ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
-  invoker_iam_disabled = local.use_zipline_custom_domain && (var.zipline_auth_enabled || length(var.allowed_ip_ranges) > 0)
+  invoker_iam_disabled = var.zipline_auth_enabled || (local.use_zipline_custom_domain && length(var.allowed_ip_ranges) > 0)
   template {
 
     vpc_access {
