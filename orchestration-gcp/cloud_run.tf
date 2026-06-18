@@ -434,6 +434,10 @@ resource "google_cloud_run_v2_service" "orchestration" {
     }
     service_account = google_service_account.orchestration_service_account.email
   }
+  scaling {
+    min_instance_count = 1
+    max_instance_count = 1
+  }
 
   depends_on = [
     google_artifact_registry_repository.docker_hub_remote_repository,
@@ -449,7 +453,6 @@ resource "google_cloud_run_v2_service" "orchestration" {
       template[0].labels,
       client,
       client_version,
-      scaling,
     ]
   }
 }
@@ -485,7 +488,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
   location = var.region
 
   ingress              = var.zipline_ui_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
-  invoker_iam_disabled = var.zipline_auth_enabled
+  invoker_iam_disabled = var.zipline_auth_enabled || var.zipline_ui_domain != ""
   custom_audiences = [
     var.zipline_ui_domain != "" ? "https://${var.zipline_ui_domain}" : "https://${var.name_prefix}-zipline-ui-${var.project_number}.${var.region}.run.app"
   ]
@@ -507,7 +510,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
 
       env {
         name  = "API_BASE_URL"
-        value = google_cloud_run_v2_service.orchestration.uri
+        value = var.hub_domain != "" ? "https://${var.hub_domain}" : google_cloud_run_v2_service.orchestration.uri
       }
       env {
         name  = "DATABASE_URL"
@@ -556,6 +559,10 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
       env {
         name  = "EVAL_SERVICE_NAME"
         value = google_cloud_run_v2_service.chronon_eval.name
+      }
+      env {
+        name = "EVAL_URL"
+        value = google_cloud_run_v2_service.chronon_eval.uri
       }
       dynamic "env" {
         for_each = var.deploy_fetcher ? [1] : []
@@ -801,7 +808,7 @@ resource "google_iap_web_backend_service_iam_member" "ui_iap_all_access" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "ui_all_access" {
-  count    = var.allow_public_access && !var.zipline_auth_enabled ? 1 : 0
+  count    = var.allow_public_access && var.zipline_auth_enabled ? 1 : 0
   name     = google_cloud_run_v2_service.zipline_ui.name
   location = google_cloud_run_v2_service.zipline_ui.location
   role     = "roles/run.invoker"
@@ -920,8 +927,9 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
   location            = var.region
   project             = var.project_id
 
-  ingress              = var.zipline_eval_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
-  invoker_iam_disabled = var.zipline_auth_enabled || var.zipline_eval_domain != ""
+  ingress = var.zipline_eval_domain != "" ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+
+  invoker_iam_disabled = var.zipline_eval_domain != "" && (var.zipline_auth_enabled || length(var.allowed_ip_ranges) > 0)
   template {
     vpc_access {
       network_interfaces {
@@ -1010,7 +1018,7 @@ resource "google_cloud_run_v2_service" "chronon_eval" {
     }
 
     scaling {
-      min_instance_count = 0
+      min_instance_count = 1
       max_instance_count = 3
     }
   }
