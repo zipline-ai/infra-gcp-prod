@@ -498,7 +498,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         network    = var.vpc_name
         subnetwork = var.subnet_name
       }
-      egress = "ALL_TRAFFIC"
+      egress = "PRIVATE_RANGES_ONLY"
     }
     service_account = google_service_account.orchestration_service_account.email
     labels = {
@@ -562,7 +562,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
       }
       env {
         name = "EVAL_URL"
-        value = google_cloud_run_v2_service.chronon_eval.uri
+        value = var.zipline_eval_domain != "" ? "https://${var.zipline_eval_domain}" : google_cloud_run_v2_service.chronon_eval.uri
       }
       dynamic "env" {
         for_each = var.deploy_fetcher ? [1] : []
