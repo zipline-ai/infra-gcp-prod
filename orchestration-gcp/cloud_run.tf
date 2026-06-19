@@ -498,7 +498,7 @@ resource "google_cloud_run_v2_service" "zipline_ui" {
         network    = var.vpc_name
         subnetwork = var.subnet_name
       }
-      egress = "ALL_TRAFFIC"
+      egress = "PRIVATE_RANGES_ONLY"
     }
     service_account = google_service_account.orchestration_service_account.email
     labels = {
