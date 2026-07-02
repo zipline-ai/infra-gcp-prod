@@ -115,8 +115,8 @@ resource "google_dataproc_autoscaling_policy" "zipline_autoscaling_policy" {
   basic_algorithm {
     cooldown_period = "120s"
     yarn_config {
-      graceful_decommission_timeout = "120s"
-      scale_down_factor             = 0.5
+      graceful_decommission_timeout = "600s"
+      scale_down_factor             = 0.25
       scale_up_factor               = 1.0
     }
   }
@@ -133,14 +133,14 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
   cluster_config {
     master_config {
       num_instances = 1
-      machine_type  = "n2-highmem-16"
+      machine_type  = "n2-highmem-16" # can use n2d-highmem-64
       disk_config {
         boot_disk_type    = "pd-standard"
         boot_disk_size_gb = 1024
       }
     }
     worker_config {
-      machine_type = "n1-highmem-16"
+      machine_type = "n1-highmem-16" # can use n2d-highmem-16
       disk_config {
         boot_disk_type    = "pd-standard"
         boot_disk_size_gb = 64
