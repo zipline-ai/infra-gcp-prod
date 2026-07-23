@@ -31,7 +31,7 @@ Initialize to gcloud and select the project you want to use
 
 Enter the zipline-gcp directory and initialize the infrastructure
 * ``` cd zipline-gcp ```
-* Edit variables.tf setting: 
+* Edit variables.tf setting:
   * customer_name variable to a unique name for your deployment
   * Fill in the project_id for your gcp project
   * Fill in the region you want to deploy the infrastructure to
@@ -52,3 +52,19 @@ Enter the zipline-gcp directory and initialize the infrastructure
 `zipline admin init` command would have created a new directory called `zipline` within your current working directory.
 
 Within that is a README with further instructions for creating and running Zipline features.
+
+## ModelTransforms with Gemini Enterprise Agent Platform
+
+If you want to use the ModelTransforms capability in Zipline with Gemini Enterprise Agent Platform (formerly known as Vertex AI), run the following two commands:
+
+```
+# 1. Enable the Vertex AI API
+gcloud services enable aiplatform.googleapis.com --project=<PROJECT_ID>>
+
+# 2. Grant the Dataproc service account permission to call Vertex
+gcloud projects add-iam-policy-binding <PROJECT_ID> \
+  --member="serviceAccount:<SERVICE_ACCOUNT_NAME>" \
+  --role="roles/aiplatform.user" \
+  --condition=None
+```
+
