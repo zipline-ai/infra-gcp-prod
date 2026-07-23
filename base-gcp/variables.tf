@@ -38,6 +38,14 @@ variable "dataproc_init_actions" {
   default = []
 }
 
+# A single custom domain for all services (optional). Either set zipline_custom_domain or the set (zipline_ui_domain, hub_domain, and zipline_eval_domain)
+variable "zipline_custom_domain" {
+  type        = string
+  description = "Custom domain for the entire zipline stack. Either set this or the individual domains for each service."
+  default     = ""
+}
+
+
 variable "hub_domain" {
   description = "Optional custom domain for hub. If not set, a default domain will be used."
   default     = ""
@@ -86,6 +94,12 @@ variable "allowed_ip_ranges" {
 
 variable "disable_iap" {
   description = "Whether to disable Identity-Aware Proxy (IAP) for the Zipline UI."
+  type        = bool
+  default     = false
+}
+
+variable "allow_public_access" {
+  description = "Whether to create allUsers IAM grants for public Cloud Run/IAP access. Leave false for organizations that restrict public IAM members."
   type        = bool
   default     = false
 }

@@ -42,6 +42,7 @@ Enter the zipline-gcp directory and initialize the infrastructure
   * For user_email, add a google groups email to give end user access to the services
   * If you want the frontend to be secured, add a custom domain you own to "zipline_ui_domain" and set up the appropriate DNS records to point to the static IPs created for the frontend services.
   * You can also set custom domains for the orchestration hub by adding it to "hub_domain". This is required if you need ingress to cloud run to be internal only.
+  * Alternatively, set "zipline_custom_domain" to use one domain for the stack: UI at the root domain, hub at /services/hub, eval at /services/eval, and fetcher at /services/fetcher when deploy_fetcher is enabled.
   * If you want to restrict access to the services to certain IPs, you can add them to the "allowed_ips" variable. If you set this, you must also set "hub_domain" and "zipline_ui_domain" to custom domains you own.
 * ``` terraform init ```
 * ``` terraform apply ```

@@ -12,6 +12,7 @@ module "orchestration" {
   users_email     = var.users_email
   alerting_email  = var.alerting_email
 
+  zipline_custom_domain  = var.zipline_custom_domain
   zipline_ui_domain      = var.zipline_ui_domain
   hub_domain             = var.hub_domain
   zipline_eval_domain    = var.zipline_eval_domain
@@ -28,6 +29,7 @@ module "orchestration" {
 
   allowed_ip_ranges      = var.allowed_ip_ranges
   disable_iap            = var.disable_iap
+  allow_public_access    = var.allow_public_access
   deploy_fetcher         = var.deploy_fetcher
   fetcher_access_members = var.fetcher_access_members
   fetcher_open_access    = var.fetcher_open_access
@@ -53,6 +55,13 @@ module "orchestration" {
   idp_group_claim                     = var.idp_group_claim
 
   depends_on = [
+    google_project_service.bigquery,
+    google_project_service.cloud_resource_manager,
+    google_project_service.compute,
+    google_project_service.iam,
+    google_project_service.pubsub,
+    google_project_service.service_usage,
+    google_project_service.storage,
     google_service_networking_connection.private_vpc_connection
   ]
 
@@ -76,6 +85,25 @@ output "hub_address" {
 
 output "ui_address" {
   value = module.orchestration.ui_address
+}
+
+output "Google_OAuth_Redirect_URI_Instructions" {
+  value       = module.orchestration.Google_OAuth_Redirect_URI_Instructions
+  description = "Instructions for registering the Google OAuth redirect URI when Google auth is enabled."
+}
+
+output "GitHub_OAuth_Redirect_URI_Instructions" {
+  value       = module.orchestration.GitHub_OAuth_Redirect_URI_Instructions
+  description = "Instructions for registering the GitHub OAuth callback URL when GitHub auth is enabled."
+}
+
+output "Microsoft_Entra_OAuth_Redirect_URI_Instructions" {
+  value       = module.orchestration.Microsoft_Entra_OAuth_Redirect_URI_Instructions
+  description = "Instructions for registering the Microsoft Entra OAuth redirect URI when Microsoft Entra auth is enabled."
+}
+
+output "fetcher_address" {
+  value = module.orchestration.fetcher_address
 }
 
 output "eval_service_url" {

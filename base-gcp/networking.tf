@@ -9,6 +9,8 @@ resource "google_compute_firewall" "deny_other_ingress_to_dataproc" {
   deny {
     protocol = "all"
   }
+
+  depends_on = [google_project_service.compute]
 }
 
 resource "google_compute_firewall" "allow_access_from_dataproc_instances" {
@@ -29,6 +31,33 @@ resource "google_compute_firewall" "allow_access_from_dataproc_instances" {
   }
   target_tags = ["dataproc-node"]
   priority    = 998
+
+  depends_on = [google_project_service.compute]
+}
+
+resource "google_compute_firewall" "allow_dataproc_node_to_node" {
+  name        = "${var.customer_name}-zipline-allow-dataproc-node-to-node"
+  network     = var.vpc_network_id != "" ? var.vpc_network_id : google_compute_network.zipline_vpc[0].id
+  direction   = "INGRESS"
+  source_tags = ["dataproc-node"]
+  target_tags = ["dataproc-node"]
+  priority    = 997
+
+  allow {
+    protocol = "tcp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "udp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "icmp"
+  }
+
+  depends_on = [google_project_service.compute]
 }
 
 resource "google_compute_network" "zipline_vpc" {
@@ -36,6 +65,8 @@ resource "google_compute_network" "zipline_vpc" {
   name                    = "zipline-${var.customer_name}-vpc"
   auto_create_subnetworks = false
   project                 = data.google_project.zipline.project_id
+
+  depends_on = [google_project_service.compute]
 }
 
 # Create subnet for Cloud Run services
@@ -111,6 +142,7 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   reserved_peering_ranges = [google_compute_global_address.private_ip_range[0].name]
 
   depends_on = [
+    google_project_service.service_networking,
     google_compute_global_address.private_ip_range
   ]
 }

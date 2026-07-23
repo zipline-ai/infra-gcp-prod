@@ -1,4 +1,4 @@
-name: Apply TF To Canary and CI
+name: Apply TF To Canary and CI and Demo
 on:
   push:
     branches:
@@ -73,9 +73,43 @@ jobs:
         working-directory: zipline-gcp
         run: tofu apply -auto-approve
 
+  apply-demo:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure GCP Credentials for Demo Project
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{secrets.GCP_DEMO_PROJECT_ID}}
+          workload_identity_provider: projects/${{secrets.GCP_DEMO_PROJECT_NUMBER}}/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: github-actions@${{secrets.GCP_DEMO_PROJECT_ID}}.iam.gserviceaccount.com
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Pull Demo Config
+        working-directory: zipline-gcp
+        run: bash pull_demo_config.sh
+
+      - name: Tofu Init
+        working-directory: zipline-gcp
+        run: tofu init
+
+      - name: Tofu Apply
+        working-directory: zipline-gcp
+        run: tofu apply -auto-approve
+
 
   on_fail_notify_slack:
-    needs: [apply-canary, apply-ci]
+    needs: [apply-canary, apply-ci, apply-demo]
     if: failure()
     runs-on: ubuntu-latest
 
@@ -100,6 +134,7 @@ jobs:
         env:
           APPLY_CANARY_RESULT: ${{ needs.apply-canary.result }}
           APPLY_CI_RESULT: ${{ needs.apply-ci.result }}
+          APPLY_DEMO_RESULT: ${{ needs.apply-demo.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMIT_SHA: ${{ github.sha }}
           BRANCH: ${{ github.ref_name }}
@@ -115,6 +150,7 @@ jobs:
           jobs = [
               ('APPLY_CANARY_RESULT', 'Push TF To GCP Canary'),
               ('APPLY_CI_RESULT', 'Push TF To GCP CI'),
+              ('APPLY_DEMO_RESULT', 'Push TF To GCP Demo'),
           ]
 
           failed = []

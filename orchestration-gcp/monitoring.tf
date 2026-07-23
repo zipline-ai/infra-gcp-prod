@@ -1,26 +1,6 @@
-resource "google_cloud_run_v2_service_iam_member" "uptime_access_to_orch" {
-  name     = google_cloud_run_v2_service.orchestration.name
-  location = var.region
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:service-${var.project_number}@gcp-sa-monitoring-notification.iam.gserviceaccount.com"
-
-  depends_on = [
-    google_cloud_run_v2_service.orchestration
-  ]
-}
-
-resource "google_cloud_run_v2_service_iam_member" "uptime_access_to_ui" {
-  name     = google_cloud_run_v2_service.zipline_ui.name
-  location = var.region
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:service-${var.project_number}@gcp-sa-monitoring-notification.iam.gserviceaccount.com"
-
-  depends_on = [
-    google_cloud_run_v2_service.zipline_ui
-  ]
-}
-
 resource "google_monitoring_uptime_check_config" "orch_uptime_check" {
+  count = var.allow_public_access ? 1 : 0
+
   display_name = "Zipline Orchestration ${title(var.name_prefix)} Uptime Check"
   timeout      = "10s"
   period       = "300s"
@@ -33,9 +13,6 @@ resource "google_monitoring_uptime_check_config" "orch_uptime_check" {
     accepted_response_status_codes {
       status_class = "STATUS_CLASS_2XX"
     }
-    service_agent_authentication {
-      type = "OIDC_TOKEN"
-    }
   }
 
   monitored_resource {
@@ -47,12 +24,13 @@ resource "google_monitoring_uptime_check_config" "orch_uptime_check" {
   }
 
   depends_on = [
-    google_cloud_run_v2_service.orchestration,
-    google_cloud_run_v2_service_iam_member.uptime_access_to_orch
+    google_cloud_run_v2_service.orchestration
   ]
 }
 
 resource "google_monitoring_uptime_check_config" "ui_uptime_check" {
+  count = var.allow_public_access ? 1 : 0
+
   display_name = "Zipline UI ${title(var.name_prefix)} Uptime Check"
   timeout      = "10s"
   period       = "300s"
@@ -63,9 +41,6 @@ resource "google_monitoring_uptime_check_config" "ui_uptime_check" {
     validate_ssl = false
     accepted_response_status_codes {
       status_class = "STATUS_CLASS_2XX"
-    }
-    service_agent_authentication {
-      type = "OIDC_TOKEN"
     }
   }
 
@@ -78,8 +53,7 @@ resource "google_monitoring_uptime_check_config" "ui_uptime_check" {
   }
 
   depends_on = [
-    google_cloud_run_v2_service.zipline_ui,
-    google_cloud_run_v2_service_iam_member.uptime_access_to_ui
+    google_cloud_run_v2_service.zipline_ui
   ]
 }
 
@@ -94,6 +68,8 @@ resource "google_monitoring_notification_channel" "alert_email" {
 }
 
 resource "google_monitoring_alert_policy" "orch_uptime_alert" {
+  count = var.allow_public_access ? 1 : 0
+
   display_name = "Zipline Orchestration Service for ${title(var.name_prefix)} Down Alert"
   combiner     = "OR"
 
@@ -150,6 +126,8 @@ resource "google_monitoring_alert_policy" "orch_uptime_alert" {
 
 # Create alert policy for UI uptime check (if you have one)
 resource "google_monitoring_alert_policy" "ui_uptime_alert" {
+  count = var.allow_public_access ? 1 : 0
+
   display_name = "Zipline UI Service for ${title(var.name_prefix)} Down Alert"
   combiner     = "OR"
 
