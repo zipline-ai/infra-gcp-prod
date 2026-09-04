@@ -109,7 +109,7 @@ resource "google_dataproc_autoscaling_policy" "zipline_autoscaling_policy" {
 
   worker_config {
     min_instances = 2
-    max_instances = 256
+    max_instances = 16
   }
 
   basic_algorithm {
@@ -133,18 +133,18 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
   cluster_config {
     master_config {
       num_instances = 1
-      machine_type  = "n2-highmem-16" # can use n2d-highmem-64
+      machine_type  = "n2-highmem-4"
       disk_config {
         boot_disk_type    = "pd-standard"
-        boot_disk_size_gb = 1024
+        boot_disk_size_gb = 100
       }
     }
     worker_config {
-      machine_type = "n1-highmem-16" # can use n2d-highmem-16
+      machine_type = "n1-highmem-4"
       disk_config {
         boot_disk_type    = "pd-standard"
         boot_disk_size_gb = 64
-        num_local_ssds    = 2
+        num_local_ssds    = 0
       }
     }
 
