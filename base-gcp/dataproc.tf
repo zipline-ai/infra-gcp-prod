@@ -144,7 +144,7 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
       disk_config {
         boot_disk_type    = "pd-standard"
         boot_disk_size_gb = 64
-        num_local_ssds    = 0
+        num_local_ssds    = 1
       }
     }
 
