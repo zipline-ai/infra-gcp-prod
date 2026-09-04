@@ -122,6 +122,48 @@ variable "setup_dataproc_cluster" {
   default     = false
 }
 
+variable "dataproc_master_machine_type" {
+  description = "Machine type for the static Dataproc master. Changing it replaces the cluster."
+  type        = string
+  default     = "n2-highmem-16"
+}
+
+variable "dataproc_worker_machine_type" {
+  description = "Machine type for static Dataproc primary workers. Changing it replaces the cluster."
+  type        = string
+  default     = "n1-highmem-16"
+}
+
+variable "dataproc_worker_min_instances" {
+  description = "Minimum number of static Dataproc primary workers."
+  type        = number
+  default     = 2
+}
+
+variable "dataproc_worker_max_instances" {
+  description = "Maximum number of static Dataproc primary workers."
+  type        = number
+  default     = 256
+}
+
+variable "dataproc_master_boot_disk_size_gb" {
+  description = "Boot disk size in GiB for the static Dataproc master. Changing it replaces the cluster."
+  type        = number
+  default     = 1024
+}
+
+variable "dataproc_worker_boot_disk_size_gb" {
+  description = "Boot disk size in GiB for static Dataproc workers. Changing it replaces the cluster."
+  type        = number
+  default     = 64
+}
+
+variable "dataproc_worker_local_ssds" {
+  description = "Number of local SSDs attached to each static Dataproc worker. Changing it replaces the cluster."
+  type        = number
+  default     = 2
+}
+
 variable "create_dataproc_sa" {
   description = "Whether to create or import the dataproc service account"
   type        = bool
