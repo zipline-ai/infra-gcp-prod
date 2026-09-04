@@ -108,8 +108,8 @@ resource "google_dataproc_autoscaling_policy" "zipline_autoscaling_policy" {
   policy_id = "zipline-${lower(var.customer_name)}-autoscaling-policy"
 
   worker_config {
-    min_instances = var.dataproc_worker_min_instances
-    max_instances = var.dataproc_worker_max_instances
+    min_instances = 2
+    max_instances = 16
   }
 
   basic_algorithm {
@@ -122,13 +122,6 @@ resource "google_dataproc_autoscaling_policy" "zipline_autoscaling_policy" {
   }
 
   depends_on = [google_project_service.dataproc]
-
-  lifecycle {
-    precondition {
-      condition     = var.dataproc_worker_max_instances >= var.dataproc_worker_min_instances
-      error_message = "The Dataproc maximum worker count must be greater than or equal to the minimum."
-    }
-  }
 }
 
 # Static Dataproc Cluster
@@ -140,18 +133,18 @@ resource "google_dataproc_cluster" "zipline_dataproc" {
   cluster_config {
     master_config {
       num_instances = 1
-      machine_type  = var.dataproc_master_machine_type
+      machine_type  = "n2-highmem-4"
       disk_config {
         boot_disk_type    = "pd-standard"
-        boot_disk_size_gb = var.dataproc_master_boot_disk_size_gb
+        boot_disk_size_gb = 100
       }
     }
     worker_config {
-      machine_type = var.dataproc_worker_machine_type
+      machine_type = "n1-highmem-4"
       disk_config {
         boot_disk_type    = "pd-standard"
-        boot_disk_size_gb = var.dataproc_worker_boot_disk_size_gb
-        num_local_ssds    = var.dataproc_worker_local_ssds
+        boot_disk_size_gb = 64
+        num_local_ssds    = 0
       }
     }
 
