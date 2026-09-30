@@ -60,6 +60,11 @@ variable "zipline_eval_domain" {
   default     = ""
 }
 
+variable "zipline_fetcher_domain" {
+  description = "Set to provide a URL for the Zipline fetcher service."
+  default     = ""
+}
+
 variable "vpc_network_name" {
   description = "The name of the VPC network to deploy resources into. If not set, one will be created."
   default     = ""
@@ -234,4 +239,10 @@ variable "fetcher_access_members" {
   type        = set(string)
   description = "List of users/groups who can access the fetcher service (e.g., user:alice@example.com, group:data-team@example.com"
   default     = []
+}
+
+variable "fetcher_open_access" {
+  description = "If true, opens access to the fetcher to allUsers"
+  type        = bool
+  default     = false
 }

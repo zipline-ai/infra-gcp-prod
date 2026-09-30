@@ -12,10 +12,11 @@ module "orchestration" {
   users_email     = var.users_email
   alerting_email  = var.alerting_email
 
-  zipline_custom_domain = var.zipline_custom_domain
-  zipline_ui_domain     = var.zipline_ui_domain
-  hub_domain            = var.hub_domain
-  zipline_eval_domain   = var.zipline_eval_domain
+  zipline_custom_domain  = var.zipline_custom_domain
+  zipline_ui_domain      = var.zipline_ui_domain
+  hub_domain             = var.hub_domain
+  zipline_eval_domain    = var.zipline_eval_domain
+  zipline_fetcher_domain = var.zipline_fetcher_domain
 
   bigtable_instance_name       = google_bigtable_instance.zipline_bigtable_instance.name
   table_partitions_dataset     = google_bigtable_table.table_partitions.name
@@ -31,6 +32,7 @@ module "orchestration" {
   allow_public_access    = var.allow_public_access
   deploy_fetcher         = var.deploy_fetcher
   fetcher_access_members = var.fetcher_access_members
+  fetcher_open_access    = var.fetcher_open_access
 
   read_only_ui = var.read_only_ui
 
@@ -119,6 +121,10 @@ output "Hub_DNS_Instructions" {
 
 output "Eval_DNS_Instructions" {
   value = module.orchestration.Eval_DNS_Instructions
+}
+
+output "Fetcher_DNS_Instructions" {
+  value = module.orchestration.Fetcher_DNS_Instructions
 }
 
 output "eval_service_account_email" {

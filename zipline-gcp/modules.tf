@@ -14,6 +14,7 @@ module "base_setup" {
   hub_domain                  = var.hub_domain
   zipline_ui_domain           = var.zipline_ui_domain
   zipline_eval_domain         = var.zipline_eval_domain
+  zipline_fetcher_domain      = var.zipline_fetcher_domain
   vpc_network_name            = var.vpc_network_name
   vpc_network_id              = var.vpc_network_id
   vpc_subnet_name             = var.vpc_subnet_name
@@ -27,6 +28,7 @@ module "base_setup" {
   setup_dataproc_cluster      = var.setup_dataproc_cluster
   deploy_fetcher              = var.deploy_fetcher
   fetcher_access_members      = var.fetcher_access_members
+  fetcher_open_access         = var.fetcher_open_access
   create_dataproc_sa          = var.create_dataproc_sa
 
   zipline_auth_enabled                = var.zipline_auth_enabled
@@ -88,6 +90,10 @@ output "Hub_DNS_Instructions" {
 
 output "Eval_DNS_Instructions" {
   value = module.base_setup.Eval_DNS_Instructions
+}
+
+output "Fetcher_DNS_Instructions" {
+  value = module.base_setup.Fetcher_DNS_Instructions
 }
 
 output "eval_service_account_email" {

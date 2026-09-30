@@ -61,6 +61,11 @@ variable "zipline_eval_domain" {
   default     = ""
 }
 
+variable "zipline_fetcher_domain" {
+  description = "Set to provide a URL for the Zipline fetcher service."
+  default     = ""
+}
+
 variable "zipline_version" {
   description = "The version of Zipline to deploy. This should correspond to a valid Docker image tag in the Zipline repository."
   default     = "latest"
@@ -234,4 +239,10 @@ variable "fetcher_access_members" {
   type        = set(string)
   description = "List of users/groups who can access the fetcher service (e.g., user:alice@example.com, group:data-team@example.com"
   default     = []
+}
+
+variable "fetcher_open_access" {
+  description = "If true, opens access to the fetcher to allUsers"
+  type        = bool
+  default     = false
 }
